@@ -16,7 +16,7 @@ project("xenia-app")
     "libavcodec",
     "libavutil",
     "snappy",
-    "spirv-tools",
+    "SPIRV-Tools",
     "vulkan-loader",
     "xenia-apu",
     "xenia-apu-nop",

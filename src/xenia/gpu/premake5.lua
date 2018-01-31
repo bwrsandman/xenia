@@ -9,7 +9,7 @@ project("xenia-gpu")
   links({
     "glslang-spirv",
     "snappy",
-    "spirv-tools",
+    "SPIRV-Tools",
     "xenia-base",
     "xenia-ui",
     "xenia-ui-spirv",
@@ -18,7 +18,6 @@ project("xenia-gpu")
   defines({
   })
   includedirs({
-    project_root.."/third_party/spirv-tools/external/include",
     project_root.."/third_party/gflags/src",
   })
   local_platform_files()
@@ -33,7 +32,7 @@ project("xenia-gpu-shader-compiler")
   links({
     "gflags",
     "glslang-spirv",
-    "spirv-tools",
+    "SPIRV-Tools",
     "xenia-base",
     "xenia-gpu",
     "xenia-ui-spirv",
