@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <semaphore.h>
 
 namespace xe {
 namespace threading {
@@ -299,15 +300,22 @@ std::unique_ptr<Event> Event::CreateAutoResetEvent(bool initial_state) {
   return std::make_unique<PosixEvent>(PosixEvent(fd));
 }
 
-// TODO(dougvj)
 class PosixSemaphore : public PosixConditionHandle<Semaphore> {
  public:
-  PosixSemaphore(int initial_count, int maximum_count) { assert_always(); }
-  ~PosixSemaphore() override = default;
-  bool Release(int release_count, int* out_previous_count) override {
-    assert_always();
-    return false;
+  PosixSemaphore(int initial_count, int maximum_count) : semaphore_(reinterpret_cast<sem_t *>(malloc(sizeof(sem_t)))) {
+    // TODO(bwrsandman): Possible improvement would be to create producer-consumer mechanism to handle maximum_count
+    sem_init(semaphore_, 0, initial_count);
   }
+  ~PosixSemaphore() override {
+    sem_destroy(semaphore_);
+  }
+  bool Release(int release_count, int* out_previous_count) override {
+    // TODO(bwrsandman)
+    assert_null(out_previous_count);
+    return sem_post(semaphore_) == 0;
+  }
+ protected:
+  sem_t * semaphore_;
 };
 
 std::unique_ptr<Semaphore> Semaphore::Create(int initial_count,
