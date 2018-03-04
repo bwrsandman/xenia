@@ -19,6 +19,35 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <signal.h>
+
+// Posix pthread_suspend is not implemented on many platforms.
+// This implementation uses SIGUSR1 and SIGUSR2 to signal to a thread that it
+// must suspend and resume respectively
+// gdb tip: handle SIGUSR1 SIGUSR2 nostop
+#define SUSPEND_SIG SIGUSR1
+#define RESUME_SIG SIGUSR2
+
+static sigset_t wait_mask;
+static __thread bool suspended; // per-thread flag
+
+static void resume_handler(int sig)
+{
+    suspended = false;
+}
+
+// Wait on suspended to be cleared before returning to normal execution
+static void suspend_handler(int sig)
+{
+    if (suspended)
+        return;
+    suspended = true;
+    do
+    {
+        sigsuspend(&wait_mask);
+    }
+    while (suspended);  // suspend until RESUME_SIG
+}
 
 namespace xe {
 namespace threading {
@@ -397,14 +426,20 @@ class PosixThread : public PosixThreadHandle<Thread> {
     assert_always();
   }
 
+  // Send the user-defined resume interupt
   bool Resume(uint32_t* out_new_suspend_count = nullptr) override {
-    assert_always();
-    return false;
+    // TODO(bwrsandman)
+    assert_null(out_new_suspend_count);
+    int result = pthread_kill(handle_, RESUME_SIG);
+    return result == 0;
   }
 
+  // Send the user-defined suspend interupt
   bool Suspend(uint32_t* out_previous_suspend_count = nullptr) override {
-    assert_always();
-    return false;
+    // TODO(bwrsandman)
+    assert_null(out_previous_suspend_count);
+    int result = pthread_kill(handle_, SUSPEND_SIG);
+    return result == 0;
   }
 
   void Terminate(int exit_code) override {}
@@ -429,8 +464,11 @@ std::unique_ptr<Thread> Thread::Create(CreationParameters params,
                                        std::function<void()> start_routine) {
   auto start_data = new ThreadStartData({std::move(start_routine)});
 
-  assert_false(params.create_suspended);
   pthread_t handle;
+  // TODO(bwrsandman): set thread-specific suspend and resume function pointers
+  // to avoid process-wide interrupts from triggering these
+  signal(SUSPEND_SIG, suspend_handler);
+  signal(RESUME_SIG, resume_handler);
   pthread_attr_t attr;
   pthread_attr_init(&attr);
   int ret = pthread_create(&handle, &attr, ThreadStartRoutine, start_data);
@@ -442,7 +480,10 @@ std::unique_ptr<Thread> Thread::Create(CreationParameters params,
     return nullptr;
   }
 
-  return std::unique_ptr<PosixThread>(new PosixThread(handle));
+  auto result = std::unique_ptr<PosixThread>(new PosixThread(handle));
+  if (params.create_suspended)
+      result->Suspend();
+  return result;
 }
 
 Thread* Thread::GetCurrentThread() {
