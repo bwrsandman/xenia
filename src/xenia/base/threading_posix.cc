@@ -37,7 +37,13 @@ inline timespec DurationToTimeSpec(
 // Thread interruption is done using user-defined signals
 // This implementation uses the SIGRTMAX - SIGRTMIN to signal to a thread
 // gdb tip, for SIG = SIGRTMIN + SignalType : handle SIG nostop
-enum class SignalType { kHighResolutionTimer, kTimer, kThreadSuspend, k_Count };
+enum class SignalType {
+  kHighResolutionTimer,
+  kTimer,
+  kThreadSuspend,
+  kThreadUserCallback,
+  k_Count
+};
 
 int GetSystemSignal(SignalType num) {
   auto result = SIGRTMIN + static_cast<int>(num);
@@ -102,9 +108,12 @@ void Sleep(std::chrono::microseconds duration) {
   } while (ret == -1 && errno == EINTR);
 }
 
-// TODO(dougvj) Not sure how to implement the equivalent of this on POSIX.
+// TODO(bwrsandman) Implement by allowing alert interrupts from IO operations
+thread_local bool alertable_state_ = false;
 SleepResult AlertableSleep(std::chrono::microseconds duration) {
-  sleep(duration.count() / 1000);
+  alertable_state_ = true;
+  Sleep(duration);
+  alertable_state_ = false;
   return SleepResult::kSuccess;
 }
 
@@ -545,8 +554,11 @@ class PosixCondition<Thread> : public PosixConditionBase {
   }
 
   void QueueUserCallback(std::function<void()> callback) {
-    // TODO(bwrsandman)
-    assert_always();
+    WaitStarted();
+    sigval value{};
+    value.sival_ptr = new std::function<void()>(std::move(callback));
+    pthread_sigqueue(thread_, GetSystemSignal(SignalType::kThreadUserCallback),
+                     value);
   }
 
   bool Resume(uint32_t* out_new_suspend_count = nullptr) {
@@ -668,7 +680,10 @@ WaitResult Wait(WaitHandle* wait_handle, bool is_alertable,
                 std::chrono::milliseconds timeout) {
   auto handle =
       reinterpret_cast<PosixConditionBase*>(wait_handle->native_handle());
-  return handle->Wait(timeout);
+  if (is_alertable) alertable_state_ = true;
+  auto result = handle->Wait(timeout);
+  if (is_alertable) alertable_state_ = false;
+  return result;
 }
 
 // TODO(dougvj)
@@ -676,10 +691,12 @@ WaitResult SignalAndWait(WaitHandle* wait_handle_to_signal,
                          WaitHandle* wait_handle_to_wait_on, bool is_alertable,
                          std::chrono::milliseconds timeout) {
   assert_always();
-  return WaitResult::kFailed;
+  if (is_alertable) alertable_state_ = true;
+  auto result = WaitResult::kFailed;
+  if (is_alertable) alertable_state_ = false;
+  return result;
 }
 
-// TODO(bwrsandman): Add support for is_alertable
 std::pair<WaitResult, size_t> WaitMultiple(WaitHandle* wait_handles[],
                                            size_t wait_handle_count,
                                            bool wait_all, bool is_alertable,
@@ -689,7 +706,10 @@ std::pair<WaitResult, size_t> WaitMultiple(WaitHandle* wait_handles[],
     handles[i] =
         reinterpret_cast<PosixConditionBase*>(wait_handles[i]->native_handle());
   }
-  return PosixConditionBase::WaitMultiple(handles, wait_all, timeout);
+  if (is_alertable) alertable_state_ = true;
+  auto result = PosixConditionBase::WaitMultiple(handles, wait_all, timeout);
+  if (is_alertable) alertable_state_ = false;
+  return result;
 }
 
 class PosixEvent : public PosixConditionHandle<Event> {
@@ -884,6 +904,7 @@ void* PosixCondition<Thread>::ThreadStartRoutine(void* parameter) {
 std::unique_ptr<Thread> Thread::Create(CreationParameters params,
                                        std::function<void()> start_routine) {
   install_signal_handler(SignalType::kThreadSuspend);
+  install_signal_handler(SignalType::kThreadUserCallback);
   auto thread = std::make_unique<PosixThread>();
   if (!thread->Initialize(params, std::move(start_routine))) return nullptr;
   assert_not_null(thread);
@@ -935,6 +956,16 @@ static void signal_handler(int signal, siginfo_t* info, void* /*context*/) {
       assert_not_null(current_thread_);
       current_thread_->WaitSuspended();
     } break;
+    case SignalType::kThreadUserCallback:
+      if (alertable_state_) {
+        assert_not_null(info->si_value.sival_ptr);
+        auto p_callback =
+            static_cast<std::function<void()>*>(info->si_value.sival_ptr);
+        assert_not_null(*p_callback);
+        (*p_callback)();
+        delete p_callback;
+      }
+      break;
     default:
       assert_always();
   }
