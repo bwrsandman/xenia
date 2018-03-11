@@ -18,8 +18,27 @@ using namespace threading;
 using namespace std::chrono_literals;
 
 TEST_CASE("Signal and Wait", "Fence") {
-  // TODO(bwrsandman):
-  REQUIRE(true == true);
+  using namespace std::chrono_literals;
+
+  std::unique_ptr<threading::Fence> pFence;
+  std::unique_ptr<threading::HighResolutionTimer> pTimer;
+
+  // Signal without wait
+  pFence = std::make_unique<threading::Fence>();
+  pFence->Signal();
+
+  // Signal once and wait
+  pFence = std::make_unique<threading::Fence>();
+  pFence->Signal();
+  pFence->Wait();
+
+  // Signal twice and wait
+  pFence = std::make_unique<threading::Fence>();
+  pFence->Signal();
+  pFence->Signal();
+  pFence->Wait();
+
+  // TODO(bwrsandman): Test fence on thread or timer
 }
 
 TEST_CASE("Get number of logical processors") {
