@@ -119,23 +119,24 @@ SleepResult AlertableSleep(std::chrono::microseconds duration) {
   return SleepResult::kSuccess;
 }
 
-// TODO(dougvj) We can probably wrap this with pthread_key_t but the type of
-// TlsHandle probably needs to be refactored
 TlsHandle AllocateTlsHandle() {
-  assert_always();
-  return 0;
+  pthread_key_t key = 0;
+  pthread_key_create(&key, nullptr);
+  return static_cast<TlsHandle>(key);
 }
 
-bool FreeTlsHandle(TlsHandle handle) { return true; }
+bool FreeTlsHandle(TlsHandle handle) {
+  return pthread_key_delete(static_cast<pthread_key_t>(handle)) == 0;
+}
 
 uintptr_t GetTlsValue(TlsHandle handle) {
-  assert_always();
-  return 0;
+  return reinterpret_cast<uintptr_t>(
+      pthread_getspecific(static_cast<pthread_key_t>(handle)));
 }
 
 bool SetTlsValue(TlsHandle handle, uintptr_t value) {
-  assert_always();
-  return false;
+  return pthread_setspecific(static_cast<pthread_key_t>(handle),
+                             reinterpret_cast<void*>(value)) == 0;
 }
 
 class PosixHighResolutionTimer : public HighResolutionTimer {
