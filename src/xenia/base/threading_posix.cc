@@ -283,17 +283,17 @@ WaitResult PosixWaitHandleNativeHandle::Wait(
 
 // Native posix thread handle
 template <typename T>
-class PosixThreadHandle : public T {
+class PosixThreadHandle : public T, public PosixWaitHandle {
  public:
-  explicit PosixThreadHandle(pthread_t handle) : handle_(handle) {}
+  explicit PosixThreadHandle(pthread_t thread) : thread_(thread) {}
   ~PosixThreadHandle() override {}
 
  protected:
   void* native_handle() const override {
-    return reinterpret_cast<void*>(handle_);
+    return reinterpret_cast<void*>(handle_.get());
   }
 
-  pthread_t handle_;
+  pthread_t thread_;
 };
 
 // This is wraps a condition object as our handle because posix has no single
@@ -481,11 +481,17 @@ std::unique_ptr<Timer> Timer::CreateSynchronizationTimer() {
 
 class PosixThread : public PosixThreadHandle<Thread> {
  public:
-  explicit PosixThread(pthread_t handle) : PosixThreadHandle(handle) {}
-  ~PosixThread() = default;
+  explicit PosixThread(pthread_t thread) : PosixThreadHandle(thread) {}
+  PosixThread(pthread_t thread, pthread_mutex_t* wait_end_mutex)
+      : PosixThreadHandle(thread), wait_end_mutex_(wait_end_mutex) {}
+  ~PosixThread() {
+    if (wait_end_mutex_) {
+      pthread_mutex_destroy(wait_end_mutex_.get());
+    }
+  }
 
   void set_name(std::string name) override {
-    pthread_setname_np(handle_, name.c_str());
+    pthread_setname_np(thread_, name.c_str());
   }
 
   uint32_t system_id() const override { return 0; }
@@ -497,7 +503,7 @@ class PosixThread : public PosixThreadHandle<Thread> {
   int priority() override {
     int policy;
     struct sched_param param;
-    int ret = pthread_getschedparam(handle_, &policy, &param);
+    int ret = pthread_getschedparam(thread_, &policy, &param);
     if (ret != 0) {
       return -1;
     }
@@ -508,7 +514,7 @@ class PosixThread : public PosixThreadHandle<Thread> {
   void set_priority(int new_priority) override {
     struct sched_param param;
     param.sched_priority = new_priority;
-    int ret = pthread_setschedparam(handle_, SCHED_FIFO, &param);
+    int ret = pthread_setschedparam(thread_, SCHED_FIFO, &param);
   }
 
   // TODO(DrChat)
@@ -527,26 +533,72 @@ class PosixThread : public PosixThreadHandle<Thread> {
   }
 
   void Terminate(int exit_code) override {}
+
+  WaitResult Wait(bool is_alterable,
+                  std::chrono::milliseconds timeout) override {
+    int ret;
+    void* thread_return;
+    timespec ts;
+
+    clock_gettime(CLOCK_REALTIME, &ts);
+    ts.tv_nsec += (timeout.count() % 1000) * 1000000;
+    if (ts.tv_nsec > 1000000000) {
+      ts.tv_sec += ts.tv_nsec / 1000000000 + timeout.count() / 1000;
+      ts.tv_nsec = ts.tv_nsec % 1000000000;
+    }
+
+    ret = pthread_mutex_timedlock(wait_end_mutex_.get(), &ts);
+    switch (ret) {
+      case 0:
+        pthread_mutex_unlock(wait_end_mutex_.get());
+        break;
+      case EOWNERDEAD:
+        return WaitResult::kAbandoned;
+      case ETIMEDOUT:
+        return WaitResult::kTimeout;
+      default:
+        return WaitResult::kFailed;
+    }
+
+    ret = pthread_join(thread_, &thread_return);
+    free(thread_return);
+    if (ret == 0) {
+      return WaitResult::kSuccess;
+    } else {
+      return WaitResult::kFailed;
+    }
+  }
+
+ private:
+  std::unique_ptr<pthread_mutex_t> wait_end_mutex_;
 };
 
 thread_local std::unique_ptr<PosixThread> current_thread_ = nullptr;
 
 struct ThreadStartData {
   std::function<void()> start_routine;
+  pthread_mutex_t* wait_end_mutex;
+  Event* started_event;
 };
 void* ThreadStartRoutine(void* parameter) {
-  current_thread_ =
-      std::unique_ptr<PosixThread>(new PosixThread(::pthread_self()));
+  current_thread_ = std::make_unique<PosixThread>(::pthread_self());
 
   auto start_data = reinterpret_cast<ThreadStartData*>(parameter);
+  pthread_mutex_lock(start_data->wait_end_mutex);
+  start_data->started_event->Set();
   start_data->start_routine();
+  pthread_mutex_unlock(start_data->wait_end_mutex);
   delete start_data;
-  return 0;
+  return nullptr;
 }
 
 std::unique_ptr<Thread> Thread::Create(CreationParameters params,
                                        std::function<void()> start_routine) {
-  auto start_data = new ThreadStartData({std::move(start_routine)});
+  using namespace std::chrono_literals;
+  auto wait_end_mutex = new pthread_mutex_t(PTHREAD_MUTEX_INITIALIZER);
+  std::unique_ptr<Event> started_event = Event::CreateAutoResetEvent(false);
+  auto start_data = new ThreadStartData(
+      {std::move(start_routine), wait_end_mutex, started_event.get()});
 
   assert_false(params.create_suspended);
   pthread_t handle;
@@ -560,8 +612,11 @@ std::unique_ptr<Thread> Thread::Create(CreationParameters params,
     delete start_data;
     return nullptr;
   }
+  if (!params.create_suspended) {
+    Wait(started_event.get(), false, 1ms);
+  }
 
-  return std::unique_ptr<PosixThread>(new PosixThread(handle));
+  return std::make_unique<PosixThread>(handle, wait_end_mutex);
 }
 
 Thread* Thread::GetCurrentThread() {

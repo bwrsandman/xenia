@@ -11,11 +11,21 @@
 
 #include "third_party/catch/include/catch.hpp"
 
+#include <array>
+
 namespace xe {
 namespace base {
 namespace test {
 using namespace threading;
 using namespace std::chrono_literals;
+
+class InvalidHandle : public threading::WaitHandle {
+ public:
+  explicit InvalidHandle() {}
+
+ protected:
+  void* native_handle() const override { return nullptr; }
+};
 
 TEST_CASE("Signal and Wait", "Fence") {
   using namespace std::chrono_literals;
@@ -136,18 +146,136 @@ TEST_CASE("HighResolutionTimer") {
 }
 
 TEST_CASE("Wait on Handle", "Wait") {
-  // TODO(bwrsandman):
-  REQUIRE(true == true);
+  using namespace std::chrono_literals;
+
+  std::unique_ptr<threading::Thread> thread;
+  threading::WaitResult result;
+  threading::Thread::CreationParameters params = {};
+  auto func = [] { threading::Sleep(20ms); };
+
+  // Call wait on simple thread
+  thread = threading::Thread::Create(params, func);
+  result = threading::Wait(thread.get(), false, 50ms);
+  REQUIRE(result == threading::WaitResult::kSuccess);
+
+  // Timeout on simple thread
+  thread = threading::Thread::Create(params, func);
+  result = threading::Wait(thread.get(), false, 1ms);
+  REQUIRE(result == threading::WaitResult::kTimeout);
+  result = threading::Wait(thread.get(), false, 50ms);
+  REQUIRE(result == threading::WaitResult::kSuccess);
+
+  // Call wait on invalid handle
+  // TODO(bwrsandman)
+  // auto invalid_handle = std::make_unique<InvalidHandle>();
+  // result = threading::Wait(invalid_handle.get(), false, 50ms);
+  // REQUIRE(result == threading::WaitResult::kFailed);
 }
 
 TEST_CASE("Wait for all of Multiple Handles", "Wait") {
-  // TODO(bwrsandman):
-  REQUIRE(true == true);
+  /* using namespace std::chrono_literals;
+
+  std::unique_ptr<threading::Thread> thread0, thread1, thread2;
+  std::vector<threading::WaitHandle*> threads;
+  threading::WaitResult result;
+  threading::Thread::CreationParameters params = {};
+  auto func0 = [] { threading::Sleep(30ms); };
+  auto func1 = [] { threading::Sleep(20ms); };
+  auto func2 = [] { threading::Sleep(10ms); };
+
+  // Call wait on simple thread
+  thread0 = threading::Thread::Create(params, func0);
+  thread1 = threading::Thread::Create(params, func1);
+  thread2 = threading::Thread::Create(params, func2);
+  threads.push_back(thread0.get());
+  threads.push_back(thread1.get());
+  threads.push_back(thread2.get());
+  result = threading::WaitAll(threads, false, 50ms);
+  REQUIRE(result == threading::WaitResult::kSuccess);
+  threads.clear();
+
+  // Timeout on simple thread
+  thread0 = threading::Thread::Create(params, func0);
+  thread1 = threading::Thread::Create(params, func1);
+  thread2 = threading::Thread::Create(params, func2);
+  threads.push_back(thread0.get());
+  threads.push_back(thread1.get());
+  threads.push_back(thread2.get());
+  result = threading::WaitAll(threads, false, 0ms);
+  REQUIRE(result == threading::WaitResult::kTimeout);
+  result = threading::WaitAll(threads, false, 20ms);
+  REQUIRE(result == threading::WaitResult::kTimeout);
+  result = threading::WaitAll(threads, false, 50ms);
+  REQUIRE(result == threading::WaitResult::kSuccess);
+  threads.clear();
+
+  thread0 = threading::Thread::Create(params, func0);
+  thread1 = threading::Thread::Create(params, func1);
+  thread2 = threading::Thread::Create(params, func2);
+  auto invalid_handle = std::make_unique<InvalidHandle>();
+  threads.push_back(thread0.get());
+  threads.push_back(thread1.get());
+  threads.push_back(thread2.get());
+  threads.push_back(invalid_handle.get());
+  result = threading::WaitAll(threads, false, 50ms);
+  REQUIRE(result == threading::WaitResult::kFailed);
+  threads.clear();*/
 }
 
 TEST_CASE("Wait for any of Multiple Handles", "Wait") {
-  // TODO(bwrsandman):
-  REQUIRE(true == true);
+  /* using namespace std::chrono_literals;
+
+  std::unique_ptr<threading::Thread> thread0, thread1, thread2;
+  std::vector<threading::WaitHandle*> threads;
+  std::pair<threading::WaitResult, size_t> result;
+  threading::Thread::CreationParameters params = {};
+  auto func0 = [] { threading::Sleep(30ms); };
+  auto func1 = [] { threading::Sleep(20ms); };
+  auto func2 = [] { threading::Sleep(10ms); };
+
+  // Call wait on simple thread
+  thread0 = threading::Thread::Create(params, func0);
+  thread1 = threading::Thread::Create(params, func1);
+  thread2 = threading::Thread::Create(params, func2);
+  threads.push_back(thread0.get());
+  threads.push_back(thread1.get());
+  threads.push_back(thread2.get());
+  result = threading::WaitAny(threads, false, 50ms);
+  REQUIRE(result.first == threading::WaitResult::kSuccess);
+  REQUIRE(result.second == 2);  // Shortest sleep of 10ms
+  threads.clear();
+
+  // Timeout on simple thread
+  thread0 = threading::Thread::Create(params, func0);
+  thread1 = threading::Thread::Create(params, func1);
+  thread2 = threading::Thread::Create(params, func2);
+  threads.push_back(thread0.get());
+  threads.push_back(thread1.get());
+  threads.push_back(thread2.get());
+  result = threading::WaitAny(threads, false, 0ms);
+  REQUIRE(result.first == threading::WaitResult::kTimeout);
+  REQUIRE(result.second == 0);
+  result = threading::WaitAny(threads, false, 20ms);
+  REQUIRE(result.first == threading::WaitResult::kSuccess);
+  REQUIRE(result.second == 2);  // Shortest sleep of 10ms
+  result = threading::WaitAny(threads, false, 50ms);
+  REQUIRE(result.first == threading::WaitResult::kSuccess);
+  REQUIRE(result.second == 2);  // Shortest sleep of 10ms
+  threads.clear();
+
+  // Call wait on invalid handle
+  thread0 = threading::Thread::Create(params, func0);
+  thread1 = threading::Thread::Create(params, func1);
+  thread2 = threading::Thread::Create(params, func2);
+  auto invalid_handle = std::make_unique<InvalidHandle>();
+  threads.push_back(thread0.get());
+  threads.push_back(thread1.get());
+  threads.push_back(thread2.get());
+  threads.push_back(invalid_handle.get());
+  result = threading::WaitAny(threads, false, 50ms);
+  REQUIRE(result.first == threading::WaitResult::kFailed);
+  REQUIRE(result.second == 0);  // Failures always return 0
+  threads.clear();*/
 }
 
 TEST_CASE("Wait on Event", "Event") {
@@ -228,8 +356,78 @@ TEST_CASE("Set and Test Current Thread Name", "Thread") {
 }
 
 TEST_CASE("Create and Run Thread", "Thread") {
-  // TODO(bwrsandman):
-  REQUIRE(true == true);
+  using namespace std::chrono_literals;
+
+  std::unique_ptr<threading::Thread> thread;
+  threading::WaitResult result;
+  threading::Thread::CreationParameters params = {};
+  auto func = [] { threading::Sleep(20ms); };
+
+  // Create most basic case of thread
+  thread = threading::Thread::Create(params, func);
+  REQUIRE(thread->native_handle() != nullptr);
+  REQUIRE(thread->affinity_mask() == 0);
+  REQUIRE(thread->name() == std::string());
+  result = threading::Wait(thread.get(), false, 50ms);
+  REQUIRE(result == threading::WaitResult::kSuccess);
+
+  /*// Add thread name
+  std::string new_name = "Test thread name";
+  thread = threading::Thread::Create(params, func);
+  REQUIRE(thread->name() == std::string());
+  thread->set_name(new_name);
+  REQUIRE(thread->name() == new_name);
+  result = threading::Wait(thread.get(), false, 50ms);
+  REQUIRE(result == threading::WaitResult::kSuccess);
+
+  // Use Terminate to end an inifinitely looping thread
+  thread = threading::Thread::Create(params, [] {
+    while (true) {
+    }
+  });
+  result = threading::Wait(thread.get(), false, 50ms);
+  REQUIRE(result == threading::WaitResult::kTimeout);
+  thread->Terminate(-1);
+  result = threading::Wait(thread.get(), false, 50ms);
+  REQUIRE(result == threading::WaitResult::kSuccess);
+
+  // Call Exit from inside an inifinitely looping thread
+  thread = threading::Thread::Create(params, [] {
+    while (true) {
+      threading::Thread::Exit(-1);
+    }
+  });
+  result = threading::Wait(thread.get(), false, 50ms);
+  REQUIRE(result == threading::WaitResult::kSuccess);
+
+  // Add an Exit command with QueueUserCallback
+  bool is_modified = false;
+  thread = threading::Thread::Create(params, [] {
+    // Using Alertable so callback is registered
+    threading::AlertableSleep(90ms);
+  });
+  result = threading::Wait(thread.get(), true, 50ms);
+  REQUIRE(result == threading::WaitResult::kTimeout);
+  REQUIRE(!is_modified);
+  thread->QueueUserCallback([&is_modified] {
+    is_modified = true;
+    threading::Thread::Exit(0);
+  });
+  result = threading::Wait(thread.get(), true, 100ms);
+  REQUIRE(result != threading::WaitResult::kTimeout);
+  REQUIRE(result != threading::WaitResult::kFailed);
+  // TODO(bwrsandman): Should be kUserCallback?
+  REQUIRE(is_modified);
+
+  // Call wait on self
+  result = threading::Wait(threading::Thread::GetCurrentThread(), false, 50ms);
+  REQUIRE(result == threading::WaitResult::kTimeout);*/
+
+  // TODO(bwrsandman): Test suspention and resume
+  // TODO(bwrsandman): Test with different priorities
+  // TODO(bwrsandman): Test different stack sizes
+  // TODO(bwrsandman): Test setting and getting affinity
+  // TODO(bwrsandman): Test for alerted state
 }
 
 }  // namespace test
