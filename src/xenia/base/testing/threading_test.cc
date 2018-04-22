@@ -148,7 +148,23 @@ TEST_CASE("Wait on Event", "Event") {
   result = Wait(evt.get(), false, 50ms);
   REQUIRE(result == WaitResult::kTimeout);
 
-  // TODO(bwrsandman): test Reset() and Pulse()
+  // Call wait on reset Event
+  evt->Set();
+  evt->Reset();
+  result = xe::threading::Wait(evt.get(), false, 50ms);
+  REQUIRE(result == threading::WaitResult::kTimeout);
+
+  // Test resetting the unset event
+  evt->Reset();
+  result = xe::threading::Wait(evt.get(), false, 50ms);
+  REQUIRE(result == threading::WaitResult::kTimeout);
+
+  // Test setting the reset event
+  evt->Set();
+  result = xe::threading::Wait(evt.get(), false, 50ms);
+  REQUIRE(result == threading::WaitResult::kSuccess);
+
+  // TODO(bwrsandman): test Pulse()
 }
 
 TEST_CASE("Wait on Semaphore", "Semaphore") {

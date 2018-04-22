@@ -385,7 +385,6 @@ std::pair<WaitResult, size_t> WaitMultiple(WaitHandle* wait_handles[],
   return std::pair<WaitResult, size_t>(WaitResult::kFailed, 0);
 }
 
-// TODO(dougvj)
 class PosixEvent : public PosixFdHandle<Event> {
  public:
   PosixEvent(intptr_t fd) : PosixFdHandle(fd) {}
@@ -394,7 +393,14 @@ class PosixEvent : public PosixFdHandle<Event> {
     uint64_t buf = 1;
     write(fd_, &buf, sizeof(buf));
   }
-  void Reset() override { assert_always(); }
+  void Reset() override {
+    using namespace std::chrono_literals;
+    WaitResult waitResult;
+    do {
+      waitResult = Wait(false, 0ms);
+    } while (waitResult == WaitResult::kSuccess);
+  }
+  // TODO(bwrsandman)
   void Pulse() override { assert_always(); }
 };
 
