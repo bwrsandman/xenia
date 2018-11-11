@@ -30,6 +30,8 @@ namespace xam {
 
 class App {
  public:
+  virtual ~App() = default;
+
   uint32_t app_id() const { return app_id_; }
 
   virtual X_RESULT DispatchMessageSync(uint32_t message, uint32_t buffer_ptr,
