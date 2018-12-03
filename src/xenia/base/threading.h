@@ -356,7 +356,7 @@ class Thread : public WaitHandle {
   virtual uint32_t system_id() const = 0;
 
   // Returns the current name of the thread, if previously specified.
-  std::string name() const { return name_; }
+  virtual std::string name() const { return name_; }
 
   // Sets the name of the thread, used in debugging and logging.
   virtual void set_name(std::string name) { name_ = std::move(name); }
