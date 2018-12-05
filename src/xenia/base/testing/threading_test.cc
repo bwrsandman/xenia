@@ -311,7 +311,7 @@ TEST_CASE("Wait on Event", "Event") {
   result = xe::threading::Wait(evt.get(), false, 50ms);
   REQUIRE(result == threading::WaitResult::kSuccess);
 
-  // TODO(bwrsandman): test Pulse()
+  // TODO(bwrsandman): test Pulse() after implementing WaitAll and Threads
 }
 
 TEST_CASE("Wait on Semaphore", "Semaphore") {
