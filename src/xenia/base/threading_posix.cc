@@ -250,6 +250,37 @@ class PosixCondition {
   pthread_mutex_t mutex_;
 };
 
+// PosixWaitable and PosixWaitableHandle are used to define Waits according to
+// different Posix natives without. In order to use the Wait function, classes
+// will need to derive from PosixWaitable;
+class PosixWaitHandle;
+
+class PosixWaitHandleNativeHandle {
+ public:
+  explicit PosixWaitHandleNativeHandle(PosixWaitHandle* wait_handle)
+      : wait_handle_(wait_handle) {}
+  virtual WaitResult Wait(bool is_alertable, std::chrono::milliseconds timeout);
+
+ private:
+  PosixWaitHandle* wait_handle_;
+};
+
+class PosixWaitHandle {
+ public:
+  PosixWaitHandle()
+      : handle_(std::make_unique<PosixWaitHandleNativeHandle>(this)) {}
+  virtual WaitResult Wait(bool is_alertable,
+                          std::chrono::milliseconds timeout) = 0;
+
+ protected:
+  std::unique_ptr<PosixWaitHandleNativeHandle> handle_;
+};
+
+WaitResult PosixWaitHandleNativeHandle::Wait(
+    bool is_alertable, std::chrono::milliseconds timeout) {
+  return wait_handle_->Wait(is_alertable, timeout);
+}
+
 // Native posix thread handle
 template <typename T>
 class PosixThreadHandle : public T {
@@ -281,50 +312,60 @@ class PosixConditionHandle : public T {
 };
 
 template <typename T>
-class PosixFdHandle : public T {
+class PosixFdHandle : public T, public PosixWaitHandle {
  public:
-  explicit PosixFdHandle(intptr_t handle) : handle_(handle) {}
+  explicit PosixFdHandle(intptr_t fd) : fd_(fd) {}
   ~PosixFdHandle() override {
-    close(handle_);
-    handle_ = 0;
+    close(fd_);
+    fd_ = 0;
+  }
+
+  WaitResult Wait(bool is_alertable,
+                  std::chrono::milliseconds timeout) override {
+    fd_set set;
+    struct timeval time_val;
+    int ret;
+
+    FD_ZERO(&set);
+    FD_SET(fd_, &set);
+
+    time_val.tv_sec = timeout.count() / 1000;
+    time_val.tv_usec = timeout.count() * 1000;
+    ret = select(fd_ + 1, &set, NULL, NULL, &time_val);
+    if (ret == -1) {
+      return WaitResult::kFailed;
+    } else if (ret == 0) {
+      return WaitResult::kTimeout;
+    } else {
+      uint64_t buf = 0;
+      ret = read(fd_, &buf, sizeof(buf));
+      if (ret < 8) {
+        return WaitResult::kTimeout;
+      }
+
+      return WaitResult::kSuccess;
+    }
   }
 
  protected:
   void* native_handle() const override {
-    return reinterpret_cast<void*>(handle_);
+    return reinterpret_cast<void*>(handle_.get());
   }
 
-  intptr_t handle_;
+  intptr_t fd_;
 };
 
-// TODO(dougvj)
 WaitResult Wait(WaitHandle* wait_handle, bool is_alertable,
                 std::chrono::milliseconds timeout) {
-  intptr_t handle = reinterpret_cast<intptr_t>(wait_handle->native_handle());
+  // wait_handle must be of a type deriving from PosixWaitHandle and have
+  // PosixWaitHandleNativeHandle as native_handle
+  assert_true(dynamic_cast<PosixWaitHandle*>(wait_handle));
 
-  fd_set set;
-  struct timeval time_val;
-  int ret;
+  auto handle = reinterpret_cast<PosixWaitHandleNativeHandle*>(
+      wait_handle->native_handle());
+  if (!handle) return WaitResult::kFailed;
 
-  FD_ZERO(&set);
-  FD_SET(handle, &set);
-
-  time_val.tv_sec = timeout.count() / 1000;
-  time_val.tv_usec = timeout.count() * 1000;
-  ret = select(handle + 1, &set, NULL, NULL, &time_val);
-  if (ret == -1) {
-    return WaitResult::kFailed;
-  } else if (ret == 0) {
-    return WaitResult::kTimeout;
-  } else {
-    uint64_t buf = 0;
-    ret = read(handle, &buf, sizeof(buf));
-    if (ret < 8) {
-      return WaitResult::kTimeout;
-    }
-
-    return WaitResult::kSuccess;
-  }
+  return handle->Wait(is_alertable, timeout);
 }
 
 // TODO(dougvj)
@@ -351,13 +392,10 @@ class PosixEvent : public PosixFdHandle<Event> {
   ~PosixEvent() override = default;
   void Set() override {
     uint64_t buf = 1;
-    write(handle_, &buf, sizeof(buf));
+    write(fd_, &buf, sizeof(buf));
   }
   void Reset() override { assert_always(); }
   void Pulse() override { assert_always(); }
-
- private:
-  PosixCondition condition_;
 };
 
 std::unique_ptr<Event> Event::CreateManualResetEvent(bool initial_state) {
