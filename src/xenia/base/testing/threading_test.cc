@@ -189,8 +189,61 @@ TEST_CASE("Wait on Event", "Event") {
   // Call wait on now consumed Event
   result = Wait(evt.get(), false, 50ms);
   REQUIRE(result == WaitResult::kTimeout);
+}
 
-  // TODO(bwrsandman): test Reset() and Pulse()
+TEST_CASE("Reset Event", "Event") {
+  auto evt = Event::CreateAutoResetEvent(false);
+  WaitResult result;
+
+  // Call wait on reset Event
+  evt->Set();
+  evt->Reset();
+  result = Wait(evt.get(), false, 50ms);
+  REQUIRE(result == WaitResult::kTimeout);
+
+  // Test resetting the unset event
+  evt->Reset();
+  result = Wait(evt.get(), false, 50ms);
+  REQUIRE(result == WaitResult::kTimeout);
+
+  // Test setting the reset event
+  evt->Set();
+  result = Wait(evt.get(), false, 50ms);
+  REQUIRE(result == WaitResult::kSuccess);
+}
+
+TEST_CASE("Pulse Event", "Event") {
+  auto evt = Event::CreateAutoResetEvent(false);
+  WaitResult result;
+
+  // Test Pulsing on another thread
+  auto thread = std::thread([&evt] {
+    Sleep(20ms);
+    evt->Pulse();
+  });
+  result = Wait(evt.get(), false, 100ms);
+  REQUIRE(result == WaitResult::kSuccess);
+  Sleep(20ms);
+  thread.join();
+
+  thread = std::thread([&evt] {
+    Sleep(10ms);
+    evt->Pulse();
+  });
+  result = Wait(evt.get(), false, 100ms);
+  REQUIRE(result == WaitResult::kSuccess);
+  Sleep(10ms);
+  thread.join();
+
+  // Test Missing the pulse
+  evt->Pulse();
+  evt->Pulse();
+  evt->Pulse();
+  result = Wait(evt.get(), false, 100ms);
+  REQUIRE(result == WaitResult::kTimeout);
+  evt->Pulse();
+  result = Wait(evt.get(), false, 100ms);
+  REQUIRE(result == WaitResult::kTimeout);
 }
 
 TEST_CASE("Wait on Semaphore", "Semaphore") {
