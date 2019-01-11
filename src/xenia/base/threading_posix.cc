@@ -425,7 +425,8 @@ struct ThreadStartData {
 template <>
 class PosixCondition<Thread> : public PosixConditionBase {
  public:
-  PosixCondition() : thread_(0), signaled_(false), exit_code_(0) {}
+  PosixCondition()
+      : thread_(0), signaled_(false), exit_code_(0), started_(false) {}
   bool Initialize(Thread::CreationParameters params,
                   ThreadStartData* start_data) {
     assert_false(params.create_suspended);
@@ -457,7 +458,7 @@ class PosixCondition<Thread> : public PosixConditionBase {
   /// Constructor for existing thread. This should only happen once called by
   /// Thread::GetCurrentThread() on the main thread
   explicit PosixCondition(pthread_t thread)
-      : thread_(thread), signaled_(false), exit_code_(0) {}
+      : thread_(thread), signaled_(false), exit_code_(0), started_(true) {}
 
   virtual ~PosixCondition() {
     if (thread_ && !signaled_) {
@@ -482,6 +483,7 @@ class PosixCondition<Thread> : public PosixConditionBase {
   uint32_t system_id() const { return static_cast<uint32_t>(thread_); }
 
   uint64_t affinity_mask() {
+    WaitStarted();
     cpu_set_t cpu_set;
     if (pthread_getaffinity_np(thread_, sizeof(cpu_set_t), &cpu_set) != 0)
       assert_always();
@@ -495,6 +497,7 @@ class PosixCondition<Thread> : public PosixConditionBase {
   }
 
   void set_affinity_mask(uint64_t mask) {
+    WaitStarted();
     cpu_set_t cpu_set;
     CPU_ZERO(&cpu_set);
     for (auto i = 0u; i < 64; i++) {
@@ -508,6 +511,7 @@ class PosixCondition<Thread> : public PosixConditionBase {
   }
 
   int priority() {
+    WaitStarted();
     int policy;
     sched_param param{};
     int ret = pthread_getschedparam(thread_, &policy, &param);
@@ -519,6 +523,7 @@ class PosixCondition<Thread> : public PosixConditionBase {
   }
 
   void set_priority(int new_priority) {
+    WaitStarted();
     sched_param param{};
     param.sched_priority = new_priority;
     if (pthread_setschedparam(thread_, SCHED_FIFO, &param) != 0)
@@ -562,6 +567,11 @@ class PosixCondition<Thread> : public PosixConditionBase {
     if (pthread_cancel(thread) != 0) assert_always();
   }
 
+  void WaitStarted() const {
+    std::unique_lock<std::mutex> lock(thread_mutex_);
+    start_signal_.wait(lock, [this] { return started_; });
+  }
+
  private:
   static void* ThreadStartRoutine(void* parameter);
   inline bool signaled() const override { return signaled_; }
@@ -576,6 +586,9 @@ class PosixCondition<Thread> : public PosixConditionBase {
   pthread_t thread_;
   bool signaled_;
   int exit_code_;
+  mutable std::mutex thread_mutex_;
+  bool started_;
+  mutable std::condition_variable start_signal_;
 };
 
 // This wraps a condition object as our handle because posix has no single
@@ -745,6 +758,7 @@ class PosixThread : public PosixConditionHandle<Thread> {
   }
 
   std::string name() const override {
+    handle_.WaitStarted();
     auto result = Thread::name();
     if (result.empty()) {
       result = handle_.name();
@@ -753,6 +767,7 @@ class PosixThread : public PosixConditionHandle<Thread> {
   }
 
   void set_name(std::string name) override {
+    handle_.WaitStarted();
     Thread::set_name(name);
     if (name.length() > 15) {
       name = name.substr(0, 15);
@@ -804,6 +819,11 @@ void* PosixCondition<Thread>::ThreadStartRoutine(void* parameter) {
   delete start_data;
 
   current_thread_ = thread;
+  {
+    std::unique_lock<std::mutex> lock(thread->handle_.thread_mutex_);
+    thread->handle_.started_ = true;
+    thread->handle_.start_signal_.notify_all();
+  }
   start_routine();
 
   {
