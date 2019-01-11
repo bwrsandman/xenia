@@ -38,7 +38,7 @@ inline timespec DurationToTimeSpec(
 // This implementation uses the SIGRTMAX - SIGRTMIN to signal to a thread
 // gdb tip, for SIG = SIGRTMIN + SignalType : handle SIG nostop
 // lldb tip, for SIG = SIGRTMIN + SignalType : process handle SIG -s false
-enum class SignalType { kHighResolutionTimer, kTimer, k_Count };
+enum class SignalType { kHighResolutionTimer, kTimer, kThreadSuspend, k_Count };
 
 int GetSystemSignal(SignalType num) {
   auto result = SIGRTMIN + static_cast<int>(num);
@@ -427,6 +427,7 @@ class PosixCondition<Timer> : public PosixConditionBase {
 
 struct ThreadStartData {
   std::function<void()> start_routine;
+  bool create_suspended;
   Thread* thread_obj;
 };
 
@@ -435,6 +436,7 @@ class PosixCondition<Thread> : public PosixConditionBase {
   enum class State {
     kUninitialized,
     kRunning,
+    kSuspended,
     kFinished,
   };
 
@@ -446,7 +448,7 @@ class PosixCondition<Thread> : public PosixConditionBase {
         state_(State::kUninitialized) {}
   bool Initialize(Thread::CreationParameters params,
                   ThreadStartData* start_data) {
-    assert_false(params.create_suspended);
+    start_data->create_suspended = params.create_suspended;
     pthread_attr_t attr;
     if (pthread_attr_init(&attr) != 0) return false;
     if (pthread_attr_setstacksize(&attr, params.stack_size) != 0) {
@@ -567,15 +569,23 @@ class PosixCondition<Thread> : public PosixConditionBase {
   }
 
   bool Resume(uint32_t* out_new_suspend_count = nullptr) {
-    // TODO(bwrsandman)
-    assert_always();
-    return false;
+    // TODO(bwrsandman): implement suspend_count
+    assert_null(out_new_suspend_count);
+    WaitStarted();
+    std::unique_lock<std::mutex> lock(state_mutex_);
+    if (state_ != State::kSuspended) return false;
+    state_ = State::kRunning;
+    state_signal_.notify_all();
+    return true;
   }
 
   bool Suspend(uint32_t* out_previous_suspend_count = nullptr) {
-    // TODO(bwrsandman)
-    assert_always();
-    return false;
+    // TODO(bwrsandman): implement suspend_count
+    assert_null(out_previous_suspend_count);
+    WaitStarted();
+    int result =
+        pthread_kill(thread_, GetSystemSignal(SignalType::kThreadSuspend));
+    return result == 0;
   }
 
   void Terminate(int exit_code) {
@@ -603,6 +613,13 @@ class PosixCondition<Thread> : public PosixConditionBase {
                        [this] { return state_ != State::kUninitialized; });
   }
 
+  /// Set state to suspended and wait until it reset by another thread
+  void WaitSuspended() {
+    std::unique_lock<std::mutex> lock(state_mutex_);
+    state_ = State::kSuspended;
+    state_signal_.wait(lock, [this] { return state_ != State::kSuspended; });
+  }
+
  private:
   static void* ThreadStartRoutine(void* parameter);
   inline bool signaled() const override { return signaled_; }
@@ -615,7 +632,7 @@ class PosixCondition<Thread> : public PosixConditionBase {
   pthread_t thread_;
   bool signaled_;
   int exit_code_;
-  State state_;
+  volatile State state_;
   mutable std::mutex state_mutex_;
   mutable std::condition_variable state_signal_;
 };
@@ -783,7 +800,8 @@ class PosixThread : public PosixConditionHandle<Thread> {
 
   bool Initialize(CreationParameters params,
                   std::function<void()> start_routine) {
-    auto start_data = new ThreadStartData({std::move(start_routine), this});
+    auto start_data =
+        new ThreadStartData({std::move(start_routine), false, this});
     return handle_.Initialize(params, start_data);
   }
 
@@ -830,6 +848,8 @@ class PosixThread : public PosixConditionHandle<Thread> {
   }
 
   void Terminate(int exit_code) override { handle_.Terminate(exit_code); }
+
+  void WaitSuspended() { handle_.WaitSuspended(); }
 };
 
 thread_local PosixThread* current_thread_ = nullptr;
@@ -846,12 +866,20 @@ void* PosixCondition<Thread>::ThreadStartRoutine(void* parameter) {
 
   auto thread = dynamic_cast<PosixThread*>(start_data->thread_obj);
   auto start_routine = std::move(start_data->start_routine);
+  auto create_suspended = start_data->create_suspended;
   delete start_data;
 
   current_thread_ = thread;
   {
     std::unique_lock<std::mutex> lock(thread->handle_.state_mutex_);
-    thread->handle_.state_ = State::kRunning;
+    if (create_suspended) {
+      thread->handle_.state_ = State::kSuspended;
+      thread->handle_.state_signal_.wait(lock, [thread] {
+        return thread->handle_.state_ != State::kSuspended;
+      });
+    } else {
+      thread->handle_.state_ = State::kRunning;
+    }
     thread->handle_.state_signal_.notify_all();
   }
 
@@ -873,6 +901,7 @@ void* PosixCondition<Thread>::ThreadStartRoutine(void* parameter) {
 
 std::unique_ptr<Thread> Thread::Create(CreationParameters params,
                                        std::function<void()> start_routine) {
+  install_signal_handler(SignalType::kThreadSuspend);
   auto thread = std::make_unique<PosixThread>();
   if (!thread->Initialize(params, std::move(start_routine))) return nullptr;
   assert_not_null(thread);
@@ -919,6 +948,10 @@ static void signal_handler(int signal, siginfo_t* info, void* /*context*/) {
       auto pTimer =
           static_cast<PosixCondition<Timer>*>(info->si_value.sival_ptr);
       pTimer->CompletionRoutine();
+    } break;
+    case SignalType::kThreadSuspend: {
+      assert_not_null(current_thread_);
+      current_thread_->WaitSuspended();
     } break;
     default:
       assert_always();
