@@ -95,9 +95,17 @@ bool VulkanProvider::Initialize() {
       "VK_LAYER_LUNARG_standard_validation",
   };
   const char* const instance_extensions[] = {
-    "VK_KHR_surface",
+    VK_KHR_SURFACE_EXTENSION_NAME,
 #if XE_PLATFORM_WIN32
-    "VK_KHR_win32_surface",
+    VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
+#elif XE_PLATFORM_LINUX
+#ifdef GDK_WINDOWING_X11
+    VK_KHR_XCB_SURFACE_EXTENSION_NAME,
+#else
+#error No Vulkan surface extension for the GDK backend defined yet.
+#endif
+#else
+#error No Vulkan surface extension for the platform defined yet.
 #endif
   };
   VkInstanceCreateInfo instance_create_info;
