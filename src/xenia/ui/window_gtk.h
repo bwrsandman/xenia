@@ -28,7 +28,7 @@ class GTKWindow : public Window {
   ~GTKWindow() override;
 
   NativePlatformHandle native_platform_handle() const override {
-    return nullptr;
+    return connection_;
   }
   NativeWindowHandle native_handle() const override { return window_; }
 
@@ -67,6 +67,7 @@ class GTKWindow : public Window {
  private:
   void Create();
   GtkWidget* window_;
+  xcb_connection_t* connection_;
 
   friend void gtk_event_handler_(GtkWidget*, GdkEvent*, gpointer);
   bool HandleMouse(GdkEventAny* event);
