@@ -38,7 +38,7 @@ VulkanContext::VulkanContext(VulkanProvider* provider, Window* target_window)
 
 VulkanContext::~VulkanContext() {
   VkResult status;
-  auto provider = static_cast<VulkanProvider*>(provider_);
+  auto provider = dynamic_cast<VulkanProvider*>(provider_);
   auto device = provider->device();
   {
     std::lock_guard<std::mutex> queue_lock(device->primary_queue_mutex());
@@ -49,8 +49,7 @@ VulkanContext::~VulkanContext() {
 }
 
 bool VulkanContext::Initialize() {
-  auto provider = static_cast<VulkanProvider*>(provider_);
-  auto device = provider->device();
+  auto provider = dynamic_cast<VulkanProvider*>(provider_);
 
   if (target_window_) {
     // Create swap chain used to present to the window.
