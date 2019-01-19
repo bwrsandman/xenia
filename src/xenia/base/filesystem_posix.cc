@@ -15,26 +15,44 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <ftw.h>
+#include <pwd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <cstdlib>
 
 namespace xe {
 namespace filesystem {
 
+template <typename T>
+T GetEnv(const std::string& name, T default_value);
+
+template <>
+std::string GetEnv(const std::string& name, std::string default_value) {
+  char* result = getenv(name.c_str());
+  if (result == nullptr) return default_value;
+  return std::string(result);
+}
+
 std::wstring GetExecutablePath() {
-  assert_always();  // IMPLEMENT ME.
-  return std::wstring();
+  char buff[FILENAME_MAX] = "";
+  readlink("/proc/self/exe", buff, FILENAME_MAX);
+  std::string s(buff);
+  return to_wstring(s);
 }
 
 std::wstring GetExecutableFolder() {
-  assert_always();  // IMPLEMENT ME.
-  return std::wstring();
+  auto path = GetExecutablePath();
+  return xe::find_base_path(path);
 }
 
 std::wstring GetUserFolder() {
-  assert_always();  // IMPLEMENT ME.
-  return std::wstring();
+  struct passwd* pw = getpwuid(getuid());
+  char* homedir = pw->pw_dir;
+  std::string home(homedir);
+  home = GetEnv("HOME", home);
+  return to_wstring(
+      GetEnv("XDG_DATA_HOME", xe::join_paths(home, "/.local/share")));
 }
 
 bool PathExists(const std::wstring& path) {
