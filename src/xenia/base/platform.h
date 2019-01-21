@@ -93,14 +93,16 @@
 namespace xe {
 
 #if XE_PLATFORM_WIN32
-const char kPathSeparator = '\\';
-const wchar_t kWPathSeparator = L'\\';
+template <typename T>
+const T kPathSeparator = T('\\');
 const size_t kMaxPath = 260;  // _MAX_PATH
 #else
-const char kPathSeparator = '/';
-const wchar_t kWPathSeparator = L'/';
+template <typename T>
+const T kPathSeparator = T('/');
 const size_t kMaxPath = 1024;  // PATH_MAX
 #endif  // XE_PLATFORM_WIN32
+template <typename T>
+const T kAllPathSeparators[3] = {T('\\'), T('/'), '\0'};
 
 // Launches a web browser to the given URL.
 void LaunchBrowser(const char* url);

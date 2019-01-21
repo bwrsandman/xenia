@@ -61,7 +61,7 @@ class Logger {
       if (FLAGS_log_file == "stdout") {
         file_ = stdout;
       } else {
-        auto file_path = xe::to_wstring(FLAGS_log_file.c_str());
+        auto file_path = xe::to_wstring(FLAGS_log_file);
         xe::filesystem::CreateParentFolder(file_path);
         file_ = xe::filesystem::OpenFile(file_path, "wt");
       }

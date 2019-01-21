@@ -40,6 +40,7 @@ std::wstring to_wstring(const std::string& source) {
 #endif  // XE_PLATFORM_LINUX
 }
 
+template <>
 std::string format_string(const char* format, va_list args) {
   if (!format) {
     return "";
@@ -64,6 +65,7 @@ std::string format_string(const char* format, va_list args) {
   }
 }
 
+template <>
 std::wstring format_string(const wchar_t* format, va_list args) {
   if (!format) {
     return L"";
@@ -104,96 +106,47 @@ std::string::size_type find_first_of_case(const std::string& target,
   }
 }
 
+template <>
+std::string to_absolute_path(const std::string& path) {
+#if XE_PLATFORM_WIN32
+  char buffer[kMaxPath];
+  _fullpath(buffer, path.c_str(), sizeof(buffer) / sizeof(char));
+  return buffer;
+#else
+  char buffer[kMaxPath];
+  realpath(path.c_str(), buffer);
+  return buffer;
+#endif  // XE_PLATFORM_WIN32
+}
+
+template <>
 std::wstring to_absolute_path(const std::wstring& path) {
 #if XE_PLATFORM_WIN32
   wchar_t buffer[kMaxPath];
   _wfullpath(buffer, path.c_str(), sizeof(buffer) / sizeof(wchar_t));
   return buffer;
 #else
-  char buffer[kMaxPath];
-  realpath(xe::to_string(path).c_str(), buffer);
-  return xe::to_wstring(buffer);
+  return xe::to_wstring(to_absolute_path(xe::to_string(path)));
 #endif  // XE_PLATFORM_WIN32
 }
 
-std::vector<std::string> split_path(const std::string& path) {
-  std::vector<std::string> parts;
-  size_t n = 0;
-  size_t last = 0;
-  while ((n = path.find_first_of("\\/", last)) != path.npos) {
-    if (last != n) {
-      parts.push_back(path.substr(last, n - last));
-    }
-    last = n + 1;
-  }
-  if (last != path.size()) {
-    parts.push_back(path.substr(last));
-  }
-  return parts;
-}
-
-std::string join_paths(const std::string& left, const std::string& right,
-                       char sep) {
-  if (!left.size()) {
-    return right;
-  } else if (!right.size()) {
-    return left;
-  }
-  if (left[left.size() - 1] == sep) {
-    return left + right;
-  } else {
-    return left + sep + right;
-  }
-}
-
-std::wstring join_paths(const std::wstring& left, const std::wstring& right,
-                        wchar_t sep) {
-  if (!left.size()) {
-    return right;
-  } else if (!right.size()) {
-    return left;
-  }
-  if (left[left.size() - 1] == sep) {
-    return left + right;
-  } else {
-    return left + sep + right;
-  }
-}
-
-std::wstring fix_path_separators(const std::wstring& source, wchar_t new_sep) {
-  // Swap all separators to new_sep.
-  wchar_t old_sep = new_sep == '\\' ? '/' : '\\';
-  std::wstring::size_type pos = 0;
-  std::wstring dest = source;
-  while ((pos = source.find_first_of(old_sep, pos)) != std::wstring::npos) {
-    dest[pos] = new_sep;
-    ++pos;
-  }
-  // Replace redundant separators.
-  pos = 0;
-  while ((pos = dest.find_first_of(new_sep, pos)) != std::wstring::npos) {
-    if (pos < dest.size() - 1) {
-      if (dest[pos + 1] == new_sep) {
-        dest.erase(pos + 1, 1);
-      }
-    }
-    ++pos;
-  }
-  return dest;
-}
-
+template <>
 std::string fix_path_separators(const std::string& source, char new_sep) {
   // Swap all separators to new_sep.
-  char old_sep = new_sep == '\\' ? '/' : '\\';
-  std::string::size_type pos = 0;
-  std::string dest = source;
-  while ((pos = source.find_first_of(old_sep, pos)) != std::string::npos) {
+  char old_sep = new_sep == kAllPathSeparators<char>[0]
+                     ? kAllPathSeparators<char>[1]
+                     : kAllPathSeparators<char>[0];
+  std::basic_string<char>::size_type pos = 0;
+  std::basic_string<char> dest = source;
+  while ((pos = source.find_first_of(old_sep, pos)) !=
+         std::basic_string<char>::npos) {
     dest[pos] = new_sep;
     ++pos;
   }
   // Replace redundant separators.
   pos = 0;
-  while ((pos = dest.find_first_of(new_sep, pos)) != std::string::npos) {
+  while ((pos = dest.find_first_of(new_sep, pos)) !=
+         std::basic_string<char>::npos) {
     if (pos < dest.size() - 1) {
       if (dest[pos + 1] == new_sep) {
         dest.erase(pos + 1, 1);
@@ -202,78 +155,6 @@ std::string fix_path_separators(const std::string& source, char new_sep) {
     ++pos;
   }
   return dest;
-}
-
-std::string find_name_from_path(const std::string& path, char sep) {
-  std::string name(path);
-  if (!path.empty()) {
-    std::string::size_type from(std::string::npos);
-    if (path.back() == sep) {
-      from = path.size() - 2;
-    }
-    auto pos(path.find_last_of(sep, from));
-    if (pos != std::string::npos) {
-      if (from == std::string::npos) {
-        name = path.substr(pos + 1);
-      } else {
-        auto len(from - pos);
-        name = path.substr(pos + 1, len);
-      }
-    }
-  }
-  return name;
-}
-
-std::wstring find_name_from_path(const std::wstring& path, wchar_t sep) {
-  std::wstring name(path);
-  if (!path.empty()) {
-    std::wstring::size_type from(std::wstring::npos);
-    if (path.back() == sep) {
-      from = path.size() - 2;
-    }
-    auto pos(path.find_last_of(sep, from));
-    if (pos != std::wstring::npos) {
-      if (from == std::wstring::npos) {
-        name = path.substr(pos + 1);
-      } else {
-        auto len(from - pos);
-        name = path.substr(pos + 1, len);
-      }
-    }
-  }
-  return name;
-}
-
-std::string find_base_path(const std::string& path, char sep) {
-  auto last_slash = path.find_last_of(sep);
-  if (last_slash == std::string::npos) {
-    return path;
-  } else if (last_slash == path.length() - 1) {
-    auto prev_slash = path.find_last_of(sep, last_slash - 1);
-    if (prev_slash == std::string::npos) {
-      return "";
-    } else {
-      return path.substr(0, prev_slash + 1);
-    }
-  } else {
-    return path.substr(0, last_slash + 1);
-  }
-}
-
-std::wstring find_base_path(const std::wstring& path, wchar_t sep) {
-  auto last_slash = path.find_last_of(sep);
-  if (last_slash == std::wstring::npos) {
-    return path;
-  } else if (last_slash == path.length() - 1) {
-    auto prev_slash = path.find_last_of(sep, last_slash - 1);
-    if (prev_slash == std::wstring::npos) {
-      return L"";
-    } else {
-      return path.substr(0, prev_slash + 1);
-    }
-  } else {
-    return path.substr(0, last_slash + 1);
-  }
 }
 
 int fuzzy_match(const std::string& pattern, const char* value) {

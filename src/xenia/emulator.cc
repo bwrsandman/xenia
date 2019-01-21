@@ -217,7 +217,7 @@ X_STATUS Emulator::TerminateTitle() {
 X_STATUS Emulator::LaunchPath(std::wstring path) {
   // Launch based on file type.
   // This is a silly guess based on file extension.
-  auto last_slash = path.find_last_of(xe::kPathSeparator);
+  auto last_slash = path.find_last_of(xe::kPathSeparator<char>);
   auto last_dot = path.find_last_of('.');
   if (last_dot < last_slash) {
     last_dot = std::wstring::npos;

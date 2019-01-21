@@ -85,7 +85,7 @@ std::wstring ContentManager::ResolvePackageRoot(uint32_t content_type) {
   // content_root/title_id/type_name/
   auto package_root =
       xe::join_paths(root_path_, xe::join_paths(title_id, type_name));
-  return package_root + xe::kWPathSeparator;
+  return package_root + xe::kPathSeparator<wchar_t>;
 }
 
 std::wstring ContentManager::ResolvePackagePath(const XCONTENT_DATA& data) {
@@ -94,7 +94,7 @@ std::wstring ContentManager::ResolvePackagePath(const XCONTENT_DATA& data) {
   auto package_root = ResolvePackageRoot(data.content_type);
   auto package_path =
       xe::join_paths(package_root, xe::to_wstring(data.file_name));
-  package_path += xe::kPathSeparator;
+  package_path += xe::kPathSeparator<char>;
   return package_path;
 }
 
@@ -265,7 +265,7 @@ std::wstring ContentManager::ResolveGameUserContentPath() {
       root_path_,
       xe::join_paths(title_id,
                      xe::join_paths(kGameUserContentDirName, user_name)));
-  return package_root + xe::kWPathSeparator;
+  return package_root + xe::kPathSeparator<wchar_t>;
 }
 
 }  // namespace xam
