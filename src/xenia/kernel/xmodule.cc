@@ -40,16 +40,13 @@ XModule::~XModule() {
 }
 
 bool XModule::Matches(const std::string& name) const {
-  if (strcasecmp(xe::find_name_from_path(path_).c_str(), name.c_str()) == 0) {
+  if (strcasecmp(xe::find_name_from_path(path_, '\\').c_str(), name.c_str()) == 0) {
     return true;
   }
   if (strcasecmp(name_.c_str(), name.c_str()) == 0) {
     return true;
   }
-  if (strcasecmp(path_.c_str(), name.c_str()) == 0) {
-    return true;
-  }
-  return false;
+  return strcasecmp(path_.c_str(), name.c_str()) == 0;
 }
 
 void XModule::OnLoad() { kernel_state_->RegisterModule(this); }

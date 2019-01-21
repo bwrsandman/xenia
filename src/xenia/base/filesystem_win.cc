@@ -46,11 +46,11 @@ bool PathExists(const std::wstring& path) {
 
 bool CreateFolder(const std::wstring& path) {
   wchar_t folder[kMaxPath] = {0};
-  auto end = std::wcschr(path.c_str(), xe::kWPathSeparator);
+  auto end = std::wcschr(path.c_str(), xe::kPathSeparator<wchar_t>);
   while (end) {
     wcsncpy(folder, path.c_str(), end - path.c_str() + 1);
     CreateDirectory(folder, NULL);
-    end = wcschr(++end, xe::kWPathSeparator);
+    end = wcschr(++end, xe::kPathSeparator<wchar_t>);
   }
   return PathExists(path);
 }

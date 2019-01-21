@@ -8,12 +8,17 @@
 */
 
 #include "xenia/base/string.h"
+#include "xenia/base/string_buffer.h"
 
 #include "third_party/catch/include/catch.hpp"
 
 namespace xe {
 namespace base {
 namespace test {
+
+TEST_CASE("find_name_from_path") {
+  REQUIRE(find_name_from_path("xe:\\\\xam.xex", '\\') == "xam.xex");
+}
 
 TEST_CASE("find_base_path") {
   REQUIRE(find_base_path("C:\\Windows\\Users", '\\') == "C:\\Windows");
@@ -46,6 +51,15 @@ TEST_CASE("find_base_path") {
   REQUIRE(find_base_path(L"local_dir/subdirectory", L'/') == L"local_dir");
   REQUIRE(find_base_path("local_dir", '/') == "");
   REQUIRE(find_base_path(L"local_dir", L'/') == L"");
+}
+
+TEST_CASE("StringBuffer") {
+  StringBuffer sb;
+  uint32_t module_flags = 0x1000000;
+
+  std::string path_(R"(\Device\Cdrom0\default.xex)");
+  sb.AppendFormat("Module %s:\n", path_.c_str());
+  sb.AppendFormat("    Module Flags: %.8X\n", module_flags);
 }
 
 }  // namespace test

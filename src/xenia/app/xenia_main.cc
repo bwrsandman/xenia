@@ -174,7 +174,7 @@ int xenia_main(const std::vector<std::wstring>& args) {
   // Setup and initialize all subsystems. If we can't do something
   // (unsupported system, memory issues, etc) this will fail early.
   X_STATUS result =
-      emulator->Setup(emulator_window->window(), CreateAudioSystem,
+      emulator->Setup(emulator_window->window(), /*CreateAudioSystem*/nullptr,
                       CreateGraphicsSystem, CreateInputDrivers);
   if (XFAILED(result)) {
     XELOGE("Failed to setup emulator: %.8X", result);

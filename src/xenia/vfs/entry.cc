@@ -27,7 +27,7 @@ Entry::Entry(Device* device, Entry* parent, const std::string& path)
       access_timestamp_(0),
       write_timestamp_(0) {
   assert_not_null(device);
-  absolute_path_ = xe::join_paths(device->mount_path(), path);
+  absolute_path_ = xe::join_paths(device->mount_path(), path, '\\');
   name_ = xe::find_name_from_path(path);
 }
 

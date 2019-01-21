@@ -130,33 +130,6 @@ std::wstring to_absolute_path(const std::wstring& path) {
 #endif  // XE_PLATFORM_WIN32
 }
 
-template <>
-std::string fix_path_separators(const std::string& source, char new_sep) {
-  // Swap all separators to new_sep.
-  char old_sep = new_sep == kAllPathSeparators<char>[0]
-                     ? kAllPathSeparators<char>[1]
-                     : kAllPathSeparators<char>[0];
-  std::basic_string<char>::size_type pos = 0;
-  std::basic_string<char> dest = source;
-  while ((pos = source.find_first_of(old_sep, pos)) !=
-         std::basic_string<char>::npos) {
-    dest[pos] = new_sep;
-    ++pos;
-  }
-  // Replace redundant separators.
-  pos = 0;
-  while ((pos = dest.find_first_of(new_sep, pos)) !=
-         std::basic_string<char>::npos) {
-    if (pos < dest.size() - 1) {
-      if (dest[pos + 1] == new_sep) {
-        dest.erase(pos + 1, 1);
-      }
-    }
-    ++pos;
-  }
-  return dest;
-}
-
 int fuzzy_match(const std::string& pattern, const char* value) {
   // https://github.com/mattyork/fuzzy/blob/master/lib/fuzzy.js
   // TODO(benvanik): look at https://github.com/atom/fuzzaldrin/tree/master/src

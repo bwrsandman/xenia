@@ -132,8 +132,9 @@ std::basic_string<T> fix_path_separators(const std::basic_string<T>& source,
   }
   return dest;
 }
+
 template <typename T>
-inline std::basic_string<T> fix_path_separators(
+inline static std::basic_string<T> fix_path_separators(
     const T* source, T new_sep = xe::kPathSeparator<T>) {
   return fix_path_separators(std::basic_string<T>(source), new_sep);
 }

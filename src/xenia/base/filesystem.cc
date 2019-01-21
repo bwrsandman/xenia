@@ -15,11 +15,11 @@ namespace xe {
 namespace filesystem {
 
 std::string CanonicalizePath(const std::string& original_path) {
-  std::string path(xe::fix_path_separators(original_path));
+  auto path_sep = '\\';
+  std::string path(xe::fix_path_separators(original_path, path_sep));
 
   std::vector<std::string::size_type> path_breaks;
 
-  auto path_sep = xe::kPathSeparator<char>;
   std::string::size_type pos(path.find_first_of(path_sep));
   std::string::size_type pos_n(std::string::npos);
 
