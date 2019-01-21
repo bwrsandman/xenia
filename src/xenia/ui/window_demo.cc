@@ -85,12 +85,11 @@ int window_demo_main(const std::vector<std::wstring>& args) {
     window->set_imgui_input_enabled(true);
   });
 
-  window->on_closed.AddListener(
-      [&loop, &window, &graphics_provider](xe::ui::UIEvent* e) {
-        loop->Quit();
-        Profiler::Shutdown();
-        XELOGI("User-initiated death!");
-      });
+  window->on_closed.AddListener([&loop](xe::ui::UIEvent* e) {
+    loop->Quit();
+    Profiler::Shutdown();
+    XELOGI("User-initiated death!");
+  });
   loop->on_quit.AddListener([&window](xe::ui::UIEvent* e) { window.reset(); });
 
   window->on_key_down.AddListener([](xe::ui::KeyEvent* e) {
