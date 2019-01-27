@@ -59,7 +59,9 @@ TEST_CASE("StringBuffer") {
 
   std::string path_(R"(\Device\Cdrom0\default.xex)");
   sb.AppendFormat("Module %s:\n", path_.c_str());
+  REQUIRE(sb.to_string() == "Module \\Device\\Cdrom0\\default.xex:\n");
   sb.AppendFormat("    Module Flags: %.8X\n", module_flags);
+  REQUIRE(sb.to_string() == "Module \\Device\\Cdrom0\\default.xex:\n    Module Flags: 01000000\n");
 }
 
 }  // namespace test

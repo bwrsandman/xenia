@@ -64,7 +64,10 @@ void StringBuffer::AppendFormat(const char* format, ...) {
 }
 
 void StringBuffer::AppendVarargs(const char* format, va_list args) {
-  int length = vsnprintf(nullptr, 0, format, args);
+  va_list size_args;
+  va_copy(size_args, args);  // arg is indeterminate after the return so copy it
+  int length = vsnprintf(nullptr, 0, format, size_args);
+  va_end(size_args);
   Grow(length + 1);
   vsnprintf(buffer_ + buffer_offset_, buffer_capacity_, format, args);
   buffer_offset_ += length;
