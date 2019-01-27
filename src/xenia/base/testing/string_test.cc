@@ -8,6 +8,7 @@
 */
 
 #include "xenia/base/string.h"
+#include "xenia/base/string_buffer.h"
 
 #include "third_party/catch/include/catch.hpp"
 
@@ -16,8 +17,16 @@ namespace base {
 namespace test {
 
 TEST_CASE("StringBuffer") {
-  // TODO(bwrsandman):
-  REQUIRE(false);
+  StringBuffer sb;
+  uint32_t module_flags = 0x1000000;
+
+  std::string path_(R"(\Device\Cdrom0\default.xex)");
+  sb.AppendFormat("Module %s:\n", path_.c_str());
+  REQUIRE(sb.to_string() == "Module \\Device\\Cdrom0\\default.xex:\n");
+  sb.AppendFormat("    Module Flags: %.8X\n", module_flags);
+  REQUIRE(
+      sb.to_string() ==
+      "Module \\Device\\Cdrom0\\default.xex:\n    Module Flags: 01000000\n");
 }
 
 }  // namespace test
