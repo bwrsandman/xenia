@@ -16,6 +16,12 @@
 #include "xenia/base/byte_order.h"
 #include "xenia/base/math.h"
 
+#if XE_PLATFORM_LINUX
+#define OPTNONE __attribute__((optnone))
+#else
+#define OPTNONE
+#endif  // XE_PLATFORM_LINUX
+
 namespace xe {
 namespace cpu {
 namespace hir {
@@ -757,8 +763,8 @@ void Value::Xor(Value* other) {
       break;
   }
 }
-
-void Value::Not() {
+// Set optnone to prevent clang 6 from optimizing and causing issues
+void Value::Not() OPTNONE {
   switch (type) {
     case INT8_TYPE:
       constant.i8 = ~constant.i8;
