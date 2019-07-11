@@ -414,6 +414,13 @@ TEST_CASE("copy_and_swap_16_in_32_unaligned", "Copy and Swap") {
   REQUIRE(true == true);
 }
 
+TEST_CASE("create_and_close_file_mapping", "Virtual Memory Mapping") {
+  auto memory = xe::memory::CreateFileMappingHandle(
+      L"test", 0x100, xe::memory::PageAccess::kReadWrite, false);
+  REQUIRE(memory);
+  xe::memory::CloseFileMappingHandle(memory, L"test");
+}
+
 }  // namespace test
 }  // namespace base
 }  // namespace xe

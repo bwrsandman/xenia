@@ -96,8 +96,9 @@ FileMappingHandle CreateFileMappingHandle(const std::filesystem::path& path,
   return ret <= 0 ? nullptr : reinterpret_cast<FileMappingHandle>(ret);
 }
 
-void CloseFileMappingHandle(FileMappingHandle handle) {
-  close(static_cast<int>(reinterpret_cast<int64_t>(handle)));
+void CloseFileMappingHandle(FileMappingHandle handle,
+                            const std::filesystem::path& path) {
+  shm_unlink(path.c_str());
 }
 
 void* MapFileView(FileMappingHandle handle, void* base_address, size_t length,
