@@ -421,6 +421,48 @@ TEST_CASE("create_and_close_file_mapping", "Virtual Memory Mapping") {
   xe::memory::CloseFileMappingHandle(memory, L"test");
 }
 
+TEST_CASE("map_view", "Virtual Memory Mapping") {
+  const size_t length = 0x100;
+  auto memory = xe::memory::CreateFileMappingHandle(
+      L"test", length, xe::memory::PageAccess::kReadWrite, false);
+  REQUIRE(memory);
+
+  uintptr_t address = 0x100000000;
+  auto view =
+      xe::memory::MapFileView(memory, reinterpret_cast<void*>(address), length,
+                              xe::memory::PageAccess::kReadWrite, 0);
+  REQUIRE(reinterpret_cast<uintptr_t>(view) == address);
+
+  xe::memory::UnmapFileView(memory, reinterpret_cast<void*>(address), length);
+  xe::memory::CloseFileMappingHandle(memory, L"test");
+}
+
+TEST_CASE("read_write_view", "Virtual Memory Mapping") {
+  const size_t length = 0x100;
+  auto memory = xe::memory::CreateFileMappingHandle(
+      L"test", length, xe::memory::PageAccess::kReadWrite, false);
+  REQUIRE(memory);
+
+  uintptr_t address = 0x100000000;
+  auto view =
+      xe::memory::MapFileView(memory, reinterpret_cast<void*>(address), length,
+                              xe::memory::PageAccess::kReadWrite, 0);
+  REQUIRE(reinterpret_cast<uintptr_t>(view) == address);
+
+  for (uint32_t i = 0; i < length; i += sizeof(uint8_t)) {
+    auto p_value = reinterpret_cast<uint8_t*>(address + i);
+    *p_value = i;
+  }
+  for (uint32_t i = 0; i < length; i += sizeof(uint8_t)) {
+    auto p_value = reinterpret_cast<uint8_t*>(address + i);
+    uint8_t value = *p_value;
+    REQUIRE(value == i);
+  }
+
+  xe::memory::UnmapFileView(memory, reinterpret_cast<void*>(address), length);
+  xe::memory::CloseFileMappingHandle(memory, L"test");
+}
+
 }  // namespace test
 }  // namespace base
 }  // namespace xe
