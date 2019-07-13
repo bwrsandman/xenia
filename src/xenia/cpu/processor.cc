@@ -197,7 +197,7 @@ Function* Processor::DefineBuiltin(const std::string_view name,
   function->set_end_address(address + 4);
   function->set_name(name);
 
-  auto builtin_function = static_cast<BuiltinFunction*>(function);
+  auto builtin_function = dynamic_cast<BuiltinFunction*>(function);
   builtin_function->SetupBuiltin(handler, arg0, arg1);
 
   function->set_status(Symbol::Status::kDeclared);

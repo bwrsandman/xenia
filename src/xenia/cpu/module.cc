@@ -106,7 +106,7 @@ Symbol::Status Module::DeclareFunction(uint32_t address,
   Symbol* symbol;
   Symbol::Status status =
       DeclareSymbol(Symbol::Type::kFunction, address, &symbol);
-  *out_function = static_cast<Function*>(symbol);
+  *out_function = dynamic_cast<Function*>(symbol);
   return status;
 }
 
