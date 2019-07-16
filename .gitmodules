@@ -43,12 +43,6 @@
 [submodule "third_party/aes_128"]
 	path = third_party/aes_128
 	url = https://github.com/openluopworld/aes_128.git
-[submodule "third_party/capstone"]
-	path = third_party/capstone
-	url = https://github.com/xenia-project/capstone.git
-[submodule "third_party/cpptoml"]
-	path = third_party/cpptoml
-	url = https://github.com/skystrife/cpptoml.git
-[submodule "third_party/cxxopts"]
-	path = third_party/cxxopts
-	url = https://github.com/jarro2783/cxxopts.git
+[submodule "third_party/premake-modules"]
+	path = third_party/premake-modules
+	url = git@github.com:bwrsandman/premake-modules.git

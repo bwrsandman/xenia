@@ -372,7 +372,7 @@ def run_platform_premake(cc=None):
 
         return run_premake('windows', 'vs' + vs_version)
     else:
-        ret = run_premake('linux', 'gmake', cc)
+        ret = run_premake('linux', 'cmake')
         ret = ret != 0 and run_premake('linux', 'codelite') or ret
         return ret
 
