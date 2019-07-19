@@ -252,6 +252,8 @@ class PosixConditionBase {
     }
   }
 
+  virtual void* native_handle() const { return cond_.native_handle(); }
+
  protected:
   inline virtual bool signaled() const = 0;
   inline virtual void post_execution() = 0;
@@ -357,6 +359,8 @@ class PosixCondition<Mutant> : public PosixConditionBase {
     return false;
   }
 
+  void* native_handle() const override { return mutex_.native_handle(); }
+
  private:
   inline bool signaled() const override {
     return count_ == 0 || owner_ == std::this_thread::get_id();
@@ -435,6 +439,10 @@ class PosixCondition<Timer> : public PosixConditionBase {
       timer_ = nullptr;
     }
     return result;
+  }
+
+  void* native_handle() const override {
+    return reinterpret_cast<void*>(timer_);
   }
 
  private:
@@ -670,6 +678,10 @@ class PosixCondition<Thread> : public PosixConditionBase {
     state_ = State::kRunning;
   }
 
+  void* native_handle() const override {
+    return reinterpret_cast<void*>(thread_);
+  }
+
  private:
   static void* ThreadStartRoutine(void* parameter);
   inline bool signaled() const override { return signaled_; }
@@ -690,10 +702,15 @@ class PosixCondition<Thread> : public PosixConditionBase {
   std::function<void()> user_callback_;
 };
 
+class PosixWaitHandle {
+ public:
+  virtual PosixConditionBase& condition() = 0;
+};
+
 // This wraps a condition object as our handle because posix has no single
 // native handle for higher level concurrency constructs such as semaphores
 template <typename T>
-class PosixConditionHandle : public T {
+class PosixConditionHandle : public T, public PosixWaitHandle {
  public:
   PosixConditionHandle() = default;
   explicit PosixConditionHandle(bool);
@@ -702,11 +719,10 @@ class PosixConditionHandle : public T {
   PosixConditionHandle(uint32_t initial_count, uint32_t maximum_count);
   ~PosixConditionHandle() override = default;
 
- protected:
-  void* native_handle() const override {
-    return reinterpret_cast<void*>(const_cast<PosixCondition<T>*>(&handle_));
-  }
+  PosixConditionBase& condition() override { return handle_; }
+  void* native_handle() const override { return handle_.native_handle(); }
 
+ protected:
   PosixCondition<T> handle_;
   friend PosixCondition<T>;
 };
@@ -735,10 +751,12 @@ PosixConditionHandle<Thread>::PosixConditionHandle(pthread_t thread)
 
 WaitResult Wait(WaitHandle* wait_handle, bool is_alertable,
                 std::chrono::milliseconds timeout) {
-  auto handle =
-      reinterpret_cast<PosixConditionBase*>(wait_handle->native_handle());
+  auto posix_wait_handle = dynamic_cast<PosixWaitHandle*>(wait_handle);
+  if (posix_wait_handle == nullptr) {
+    return WaitResult::kFailed;
+  }
   if (is_alertable) alertable_state_ = true;
-  auto result = handle->Wait(timeout);
+  auto result = posix_wait_handle->condition().Wait(timeout);
   if (is_alertable) alertable_state_ = false;
   return result;
 }
@@ -747,12 +765,18 @@ WaitResult SignalAndWait(WaitHandle* wait_handle_to_signal,
                          WaitHandle* wait_handle_to_wait_on, bool is_alertable,
                          std::chrono::milliseconds timeout) {
   auto result = WaitResult::kFailed;
-  auto handle_to_signal = reinterpret_cast<PosixConditionBase*>(
-      wait_handle_to_signal->native_handle());
-  auto handle_to_wait_on = reinterpret_cast<PosixConditionBase*>(
-      wait_handle_to_wait_on->native_handle());
+  auto posix_wait_handle_to_signal =
+      dynamic_cast<PosixWaitHandle*>(wait_handle_to_signal);
+  auto posix_wait_handle_to_wait_on =
+      dynamic_cast<PosixWaitHandle*>(wait_handle_to_wait_on);
+  if (posix_wait_handle_to_signal == nullptr ||
+      posix_wait_handle_to_wait_on == nullptr) {
+    return WaitResult::kFailed;
+  }
   if (is_alertable) alertable_state_ = true;
-  if (handle_to_signal->Signal()) result = handle_to_wait_on->Wait(timeout);
+  if (posix_wait_handle_to_signal->condition().Signal()) {
+    result = posix_wait_handle_to_wait_on->condition().Wait(timeout);
+  }
   if (is_alertable) alertable_state_ = false;
   return result;
 }
@@ -761,14 +785,18 @@ std::pair<WaitResult, size_t> WaitMultiple(WaitHandle* wait_handles[],
                                            size_t wait_handle_count,
                                            bool wait_all, bool is_alertable,
                                            std::chrono::milliseconds timeout) {
-  std::vector<PosixConditionBase*> handles(wait_handle_count);
-  for (int i = 0u; i < wait_handle_count; ++i) {
-    handles[i] =
-        reinterpret_cast<PosixConditionBase*>(wait_handles[i]->native_handle());
+  std::vector<PosixConditionBase*> conditions;
+  conditions.reserve(wait_handle_count);
+  for (size_t i = 0u; i < wait_handle_count; ++i) {
+    auto handle = dynamic_cast<PosixWaitHandle*>(wait_handles[i]);
+    if (handle == nullptr) {
+      return std::make_pair(WaitResult::kFailed, 0);
+    }
+    conditions.push_back(&handle->condition());
   }
   if (is_alertable) alertable_state_ = true;
-  auto result =
-      PosixConditionBase::WaitMultiple(std::move(handles), wait_all, timeout);
+  auto result = PosixConditionBase::WaitMultiple(std::move(conditions),
+                                                 wait_all, timeout);
   if (is_alertable) alertable_state_ = false;
   return result;
 }
