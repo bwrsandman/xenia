@@ -70,7 +70,6 @@ project("xenia-gpu-vulkan-trace-viewer")
       "X11",
       "xcb",
       "X11-xcb",
-      "GL",
     })
 
   filter("platforms:Windows")
@@ -136,7 +135,6 @@ project("xenia-gpu-vulkan-trace-dump")
       "X11",
       "xcb",
       "X11-xcb",
-      "GL",
     })
 
   filter("platforms:Windows")
