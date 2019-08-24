@@ -121,9 +121,7 @@ static int removeCallback(const char* fpath, const struct stat* sb,
 }
 
 bool DeleteFolder(const std::filesystem::path& path) {
-  return nftw(path.c_str(), removeCallback, 64, FTW_DEPTH | FTW_PHYS) == 0
-             ? true
-             : false;
+  return nftw(path.c_str(), removeCallback, 64, FTW_DEPTH | FTW_PHYS) == 0;
 }
 
 static uint64_t convertUnixtimeToWinFiletime(const timespec& unixtime) {
@@ -155,7 +153,7 @@ bool CreateFile(const std::filesystem::path& path) {
 
 bool DeleteFile(const std::filesystem::path& path) {
   // TODO: proper implementation.
-  return (path.c_str()) == 0 ? true : false;
+  return path.c_str() == nullptr;
 }
 
 class PosixFileHandle : public FileHandle {
@@ -170,16 +168,16 @@ class PosixFileHandle : public FileHandle {
             size_t* out_bytes_read) override {
     ssize_t out = pread(handle_, buffer, buffer_length, file_offset);
     *out_bytes_read = out;
-    return out >= 0 ? true : false;
+    return out >= 0;
   }
   bool Write(size_t file_offset, const void* buffer, size_t buffer_length,
              size_t* out_bytes_written) override {
     ssize_t out = pwrite(handle_, buffer, buffer_length, file_offset);
     *out_bytes_written = out;
-    return out >= 0 ? true : false;
+    return out >= 0;
   }
   bool SetLength(size_t length) override {
-    return ftruncate(handle_, length) >= 0 ? true : false;
+    return ftruncate(handle_, length) >= 0;
   }
   void Flush() override { fsync(handle_); }
 
