@@ -56,13 +56,13 @@ TEST_CASE("Fence") {
       std::thread(func),
   });
 
-  Sleep(100ms);
+  Sleep(10ms);
   REQUIRE(finished.load() == 0);
 
   // TODO(bwrsandman): Check if this is correct behaviour: looping with Sleep
   // is the only way to get fence to signal all threads on windows
   for (int i = 0; i < threads.size(); ++i) {
-    Sleep(10ms);
+    Sleep(1ms);
     pFence->Signal();
   }
   REQUIRE(started.load() == threads.size());
@@ -93,7 +93,7 @@ TEST_CASE("Sync with Memory Barrier", "SyncMemory") {
 }
 
 TEST_CASE("Sleep Current Thread", "Sleep") {
-  auto wait_time = 50ms;
+  auto wait_time = 5ms;
   auto start = std::chrono::steady_clock::now();
   Sleep(wait_time);
   auto duration = std::chrono::steady_clock::now() - start;
@@ -101,7 +101,7 @@ TEST_CASE("Sleep Current Thread", "Sleep") {
 }
 
 TEST_CASE("Sleep Current Thread in Alertable State", "Sleep") {
-  auto wait_time = 50ms;
+  auto wait_time = 5ms;
   auto start = std::chrono::steady_clock::now();
   auto result = threading::AlertableSleep(wait_time);
   auto duration = std::chrono::steady_clock::now() - start;
@@ -136,7 +136,7 @@ TEST_CASE("TlsHandle") {
     non_thread_local_value = threading::GetTlsValue(handle);
   });
 
-  auto result = Wait(thread.get(), false, 50ms);
+  auto result = Wait(thread.get(), false, 5ms);
   REQUIRE(result == WaitResult::kSuccess);
   REQUIRE(non_thread_local_value == 0);
 
@@ -147,11 +147,11 @@ TEST_CASE("TlsHandle") {
 TEST_CASE("HighResolutionTimer") {
   // The wait time is 500ms with an interval of 50ms
   // Smaller values are not as precise and fail the test
-  const auto wait_time = 500ms;
+  const auto wait_time = 50ms;
 
   // Time the actual sleep duration
   {
-    const auto interval = 50ms;
+    const auto interval = 5ms;
     uint64_t counter = 0;
     auto start = std::chrono::steady_clock::now();
     auto cb = [&counter] { ++counter; };
@@ -170,8 +170,8 @@ TEST_CASE("HighResolutionTimer") {
 
   // Test concurrent timers
   {
-    const auto interval1 = 100ms;
-    const auto interval2 = 200ms;
+    const auto interval1 = 10ms;
+    const auto interval2 = 20ms;
     uint64_t counter1 = 0;
     uint64_t counter2 = 0;
     auto start = std::chrono::steady_clock::now();
@@ -205,9 +205,9 @@ TEST_CASE("Wait on Multiple Handles", "Wait") {
   auto event_ = Event::CreateManualResetEvent(false);
   auto thread = Thread::Create({}, [&mutant, &semaphore, &event_] {
     event_->Set();
-    Wait(mutant.get(), false, 25ms);
+    Wait(mutant.get(), false, 2ms);
     semaphore->Release(1, nullptr);
-    Wait(mutant.get(), false, 25ms);
+    Wait(mutant.get(), false, 2ms);
     mutant->Release();
   });
 
@@ -218,11 +218,11 @@ TEST_CASE("Wait on Multiple Handles", "Wait") {
       thread.get(),
   };
 
-  auto any_result = WaitAny(handles, false, 100ms);
+  auto any_result = WaitAny(handles, false, 10ms);
   REQUIRE(any_result.first == WaitResult::kSuccess);
   REQUIRE(any_result.second == 0);
 
-  auto all_result = WaitAll(handles, false, 100ms);
+  auto all_result = WaitAll(handles, false, 10ms);
   REQUIRE(all_result == WaitResult::kSuccess);
 }
 
@@ -234,11 +234,11 @@ TEST_CASE("Signal and Wait") {
     Wait(mutant.get(), false);
     event_->Set();
   });
-  result = Wait(event_.get(), false, 50ms);
+  result = Wait(event_.get(), false, 5ms);
   REQUIRE(result == WaitResult::kTimeout);
-  result = SignalAndWait(mutant.get(), event_.get(), false, 50ms);
+  result = SignalAndWait(mutant.get(), event_.get(), false, 5ms);
   REQUIRE(result == WaitResult::kSuccess);
-  result = Wait(thread.get(), false, 50ms);
+  result = Wait(thread.get(), false, 5ms);
   REQUIRE(result == WaitResult::kSuccess);
 }
 
@@ -247,16 +247,16 @@ TEST_CASE("Wait on Event", "Event") {
   WaitResult result;
 
   // Call wait on unset Event
-  result = Wait(evt.get(), false, 50ms);
+  result = Wait(evt.get(), false, 5ms);
   REQUIRE(result == WaitResult::kTimeout);
 
   // Call wait on set Event
   evt->Set();
-  result = Wait(evt.get(), false, 50ms);
+  result = Wait(evt.get(), false, 5ms);
   REQUIRE(result == WaitResult::kSuccess);
 
   // Call wait on now consumed Event
-  result = Wait(evt.get(), false, 50ms);
+  result = Wait(evt.get(), false, 5ms);
   REQUIRE(result == WaitResult::kTimeout);
 }
 
@@ -267,17 +267,17 @@ TEST_CASE("Reset Event", "Event") {
   // Call wait on reset Event
   evt->Set();
   evt->Reset();
-  result = Wait(evt.get(), false, 50ms);
+  result = Wait(evt.get(), false, 5ms);
   REQUIRE(result == WaitResult::kTimeout);
 
   // Test resetting the unset event
   evt->Reset();
-  result = Wait(evt.get(), false, 50ms);
+  result = Wait(evt.get(), false, 5ms);
   REQUIRE(result == WaitResult::kTimeout);
 
   // Test setting the reset event
   evt->Set();
-  result = Wait(evt.get(), false, 50ms);
+  result = Wait(evt.get(), false, 5ms);
   REQUIRE(result == WaitResult::kSuccess);
 }
 
@@ -298,39 +298,39 @@ TEST_CASE("Wait on Multiple Events", "Event") {
 
   auto threads = std::array<std::thread, 4>{
       std::thread([&events, &sign_in] {
-        auto res = WaitAll({events[1].get(), events[3].get()}, false, 100ms);
+        auto res = WaitAll({events[1].get(), events[3].get()}, false, 10ms);
         if (res == WaitResult::kSuccess) {
           sign_in(1);
         }
       }),
       std::thread([&events, &sign_in] {
-        auto res = WaitAny({events[0].get(), events[2].get()}, false, 100ms);
+        auto res = WaitAny({events[0].get(), events[2].get()}, false, 10ms);
         if (res.first == WaitResult::kSuccess) {
           sign_in(2);
         }
       }),
       std::thread([&events, &sign_in] {
         auto res = WaitAll({events[0].get(), events[2].get(), events[3].get()},
-                           false, 100ms);
+                           false, 10ms);
         if (res == WaitResult::kSuccess) {
           sign_in(3);
         }
       }),
       std::thread([&events, &sign_in] {
-        auto res = WaitAny({events[1].get(), events[3].get()}, false, 100ms);
+        auto res = WaitAny({events[1].get(), events[3].get()}, false, 10ms);
         if (res.first == WaitResult::kSuccess) {
           sign_in(4);
         }
       }),
   };
 
-  Sleep(10ms);
+  Sleep(1ms);
   events[3]->Set();  // Signals thread id=4 and stays on for 1 and 3
-  Sleep(10ms);
+  Sleep(1ms);
   events[1]->Set();  // Signals thread id=1
-  Sleep(10ms);
+  Sleep(1ms);
   events[0]->Set();  // Signals thread id=2
-  Sleep(10ms);
+  Sleep(1ms);
   events[2]->Set();  // Partial signals thread id=3
   events[0]->Set();  // Signals thread id=3
 
@@ -353,7 +353,7 @@ TEST_CASE("Wait on Semaphore", "Semaphore") {
 
   // Wait on semaphore with no room
   sem = Semaphore::Create(0, 5);
-  result = Wait(sem.get(), false, 10ms);
+  result = Wait(sem.get(), false, 1ms);
   REQUIRE(result == WaitResult::kTimeout);
 
   // Add room in semaphore
@@ -361,7 +361,7 @@ TEST_CASE("Wait on Semaphore", "Semaphore") {
   REQUIRE(previous_count == 0);
   REQUIRE(sem->Release(1, &previous_count));
   REQUIRE(previous_count == 2);
-  result = Wait(sem.get(), false, 10ms);
+  result = Wait(sem.get(), false, 1ms);
   REQUIRE(result == WaitResult::kSuccess);
   REQUIRE(sem->Release(1, &previous_count));
   REQUIRE(previous_count == 2);
@@ -387,26 +387,26 @@ TEST_CASE("Wait on Semaphore", "Semaphore") {
 
   // Wait on fully available semaphore
   sem = Semaphore::Create(5, 5);
-  result = Wait(sem.get(), false, 10ms);
+  result = Wait(sem.get(), false, 1ms);
   REQUIRE(result == WaitResult::kSuccess);
-  result = Wait(sem.get(), false, 10ms);
+  result = Wait(sem.get(), false, 1ms);
   REQUIRE(result == WaitResult::kSuccess);
-  result = Wait(sem.get(), false, 10ms);
+  result = Wait(sem.get(), false, 1ms);
   REQUIRE(result == WaitResult::kSuccess);
-  result = Wait(sem.get(), false, 10ms);
+  result = Wait(sem.get(), false, 1ms);
   REQUIRE(result == WaitResult::kSuccess);
-  result = Wait(sem.get(), false, 10ms);
+  result = Wait(sem.get(), false, 1ms);
   REQUIRE(result == WaitResult::kSuccess);
-  result = Wait(sem.get(), false, 10ms);
+  result = Wait(sem.get(), false, 1ms);
   REQUIRE(result == WaitResult::kTimeout);
 
   // Semaphore between threads
   sem = Semaphore::Create(5, 5);
-  Sleep(10ms);
+  Sleep(1ms);
   // Occupy the semaphore with 5 threads
   auto func = [&sem] {
-    auto res = Wait(sem.get(), false, 100ms);
-    Sleep(500ms);
+    auto res = Wait(sem.get(), false, 10ms);
+    Sleep(50ms);
     if (res == WaitResult::kSuccess) {
       sem->Release(1, nullptr);
     }
@@ -416,15 +416,15 @@ TEST_CASE("Wait on Semaphore", "Semaphore") {
       std::thread(func), std::thread(func),
   };
   // Give threads time to acquire semaphore
-  Sleep(10ms);
+  Sleep(1ms);
   // Attempt to acquire full semaphore with current (6th) thread
-  result = Wait(sem.get(), false, 20ms);
+  result = Wait(sem.get(), false, 2ms);
   REQUIRE(result == WaitResult::kTimeout);
   // Give threads time to release semaphore
   for (auto& t : threads) {
     t.join();
   }
-  result = Wait(sem.get(), false, 10ms);
+  result = Wait(sem.get(), false, 1ms);
   REQUIRE(result == WaitResult::kSuccess);
   sem->Release(1, &previous_count);
   REQUIRE(previous_count == 4);
@@ -451,7 +451,7 @@ TEST_CASE("Wait on Multiple Semaphores", "Semaphore") {
   // Test Wait all which should fail
   sem0 = Semaphore::Create(0, 5);
   sem1 = Semaphore::Create(5, 5);
-  all_result = WaitAll({sem0.get(), sem1.get()}, false, 10ms);
+  all_result = WaitAll({sem0.get(), sem1.get()}, false, 1ms);
   REQUIRE(all_result == WaitResult::kTimeout);
   previous_count = -1;
   REQUIRE(sem0->Release(1, &previous_count));
@@ -463,7 +463,7 @@ TEST_CASE("Wait on Multiple Semaphores", "Semaphore") {
   // Test Wait all again which should succeed
   sem0 = Semaphore::Create(1, 5);
   sem1 = Semaphore::Create(5, 5);
-  all_result = WaitAll({sem0.get(), sem1.get()}, false, 10ms);
+  all_result = WaitAll({sem0.get(), sem1.get()}, false, 1ms);
   REQUIRE(all_result == WaitResult::kSuccess);
   previous_count = -1;
   REQUIRE(sem0->Release(1, &previous_count));
@@ -475,7 +475,7 @@ TEST_CASE("Wait on Multiple Semaphores", "Semaphore") {
   // Test Wait Any which should fail
   sem0 = Semaphore::Create(0, 5);
   sem1 = Semaphore::Create(0, 5);
-  any_result = WaitAny({sem0.get(), sem1.get()}, false, 10ms);
+  any_result = WaitAny({sem0.get(), sem1.get()}, false, 1ms);
   REQUIRE(any_result.first == WaitResult::kTimeout);
   REQUIRE(any_result.second == 0);
   previous_count = -1;
@@ -488,7 +488,7 @@ TEST_CASE("Wait on Multiple Semaphores", "Semaphore") {
   // Test Wait Any which should succeed
   sem0 = Semaphore::Create(0, 5);
   sem1 = Semaphore::Create(5, 5);
-  any_result = WaitAny({sem0.get(), sem1.get()}, false, 10ms);
+  any_result = WaitAny({sem0.get(), sem1.get()}, false, 1ms);
   REQUIRE(any_result.first == WaitResult::kSuccess);
   REQUIRE(any_result.second == 1);
   previous_count = -1;
@@ -565,16 +565,16 @@ TEST_CASE("Wait on Multiple Mutants", "Mutant") {
   auto thread0 = std::thread([&mut0, &mut1] {
     mut0 = Mutant::Create(true);
     mut1 = Mutant::Create(true);
-    Sleep(50ms);
+    Sleep(5ms);
     mut0->Release();
     mut1->Release();
   });
-  Sleep(10ms);
-  all_result = WaitAll({mut0.get(), mut1.get()}, false, 10ms);
+  Sleep(1ms);
+  all_result = WaitAll({mut0.get(), mut1.get()}, false, 1ms);
   REQUIRE(all_result == WaitResult::kTimeout);
   REQUIRE_FALSE(mut0->Release());
   REQUIRE_FALSE(mut1->Release());
-  any_result = WaitAny({mut0.get(), mut1.get()}, false, 10ms);
+  any_result = WaitAny({mut0.get(), mut1.get()}, false, 1ms);
   REQUIRE(any_result.first == WaitResult::kTimeout);
   REQUIRE(any_result.second == 0);
   REQUIRE_FALSE(mut0->Release());
@@ -585,15 +585,15 @@ TEST_CASE("Wait on Multiple Mutants", "Mutant") {
   auto thread1 = std::thread([&mut0, &mut1] {
     mut0 = Mutant::Create(true);
     mut1 = Mutant::Create(false);
-    Sleep(50ms);
+    Sleep(5ms);
     mut0->Release();
   });
-  Sleep(10ms);
-  all_result = WaitAll({mut0.get(), mut1.get()}, false, 10ms);
+  Sleep(1ms);
+  all_result = WaitAll({mut0.get(), mut1.get()}, false, 1ms);
   REQUIRE(all_result == WaitResult::kTimeout);
   REQUIRE_FALSE(mut0->Release());
   REQUIRE_FALSE(mut1->Release());
-  any_result = WaitAny({mut0.get(), mut1.get()}, false, 10ms);
+  any_result = WaitAny({mut0.get(), mut1.get()}, false, 1ms);
   REQUIRE(any_result.first == WaitResult::kSuccess);
   REQUIRE(any_result.second == 1);
   REQUIRE_FALSE(mut0->Release());
@@ -604,14 +604,14 @@ TEST_CASE("Wait on Multiple Mutants", "Mutant") {
   auto thread2 = std::thread([&mut0, &mut1] {
     mut0 = Mutant::Create(false);
     mut1 = Mutant::Create(false);
-    Sleep(50ms);
+    Sleep(5ms);
   });
-  Sleep(10ms);
-  all_result = WaitAll({mut0.get(), mut1.get()}, false, 10ms);
+  Sleep(1ms);
+  all_result = WaitAll({mut0.get(), mut1.get()}, false, 1ms);
   REQUIRE(all_result == WaitResult::kSuccess);
   REQUIRE(mut0->Release());
   REQUIRE(mut1->Release());
-  any_result = WaitAny({mut0.get(), mut1.get()}, false, 10ms);
+  any_result = WaitAny({mut0.get(), mut1.get()}, false, 1ms);
   REQUIRE(any_result.first == WaitResult::kSuccess);
   REQUIRE(any_result.second == 0);
   REQUIRE(mut0->Release());
@@ -651,36 +651,36 @@ TEST_CASE("Wait on Timer", "Timer") {
   // REQUIRE(result == WaitResult::kTimeout);
 
   // Test Repeating
-  REQUIRE(timer->SetRepeating(1ms, 10ms));
+  REQUIRE(timer->SetRepeating(100us, 1ms));
   for (int i = 0; i < 10; ++i) {
-    result = Wait(timer.get(), false, 20ms);
+    result = Wait(timer.get(), false, 2ms);
     INFO(i);
     REQUIRE(result == WaitResult::kSuccess);
   }
   MaybeYield();
-  Sleep(10ms);  // Skip a few events
+  Sleep(1ms);  // Skip a few events
   for (int i = 0; i < 10; ++i) {
-    result = Wait(timer.get(), false, 20ms);
+    result = Wait(timer.get(), false, 2ms);
     REQUIRE(result == WaitResult::kSuccess);
   }
   // Cancel it
   timer->Cancel();
-  result = Wait(timer.get(), false, 20ms);
+  result = Wait(timer.get(), false, 2ms);
   REQUIRE(result == WaitResult::kTimeout);
   MaybeYield();
-  Sleep(10ms);  // Skip a few events
-  result = Wait(timer.get(), false, 20ms);
+  Sleep(1ms);  // Skip a few events
+  result = Wait(timer.get(), false, 2ms);
   REQUIRE(result == WaitResult::kTimeout);
   // Cancel with SetOnce
-  REQUIRE(timer->SetRepeating(1ms, 10ms));
+  REQUIRE(timer->SetRepeating(1ms, 1ms));
   for (int i = 0; i < 10; ++i) {
-    result = Wait(timer.get(), false, 20ms);
+    result = Wait(timer.get(), false, 2ms);
     REQUIRE(result == WaitResult::kSuccess);
   }
-  REQUIRE(timer->SetOnce(1ms));
-  result = Wait(timer.get(), false, 20ms);
+  REQUIRE(timer->SetOnce(100us));
+  result = Wait(timer.get(), false, 2ms);
   REQUIRE(result == WaitResult::kSuccess);  // Signal from Set Once
-  result = Wait(timer.get(), false, 20ms);
+  result = Wait(timer.get(), false, 2ms);
   REQUIRE(result == WaitResult::kTimeout);  // No more signals from repeating
 }
 
@@ -700,24 +700,24 @@ TEST_CASE("Wait on Multiple Timers", "Timer") {
 
   // Some signaled
   REQUIRE(timer1->SetOnce(1ms));
-  all_result = WaitAll({timer0.get(), timer1.get()}, false, 100ms);
+  all_result = WaitAll({timer0.get(), timer1.get()}, false, 10ms);
   REQUIRE(all_result == WaitResult::kTimeout);
-  any_result = WaitAny({timer0.get(), timer1.get()}, false, 100ms);
+  any_result = WaitAny({timer0.get(), timer1.get()}, false, 10ms);
   REQUIRE(any_result.first == WaitResult::kSuccess);
   REQUIRE(any_result.second == 1);
 
   // All signaled
   REQUIRE(timer0->SetOnce(1ms));
-  all_result = WaitAll({timer0.get(), timer1.get()}, false, 100ms);
+  all_result = WaitAll({timer0.get(), timer1.get()}, false, 10ms);
   REQUIRE(all_result == WaitResult::kSuccess);
   REQUIRE(timer0->SetOnce(1ms));
   Sleep(1ms);
-  any_result = WaitAny({timer0.get(), timer1.get()}, false, 100ms);
+  any_result = WaitAny({timer0.get(), timer1.get()}, false, 10ms);
   REQUIRE(any_result.first == WaitResult::kSuccess);
   REQUIRE(any_result.second == 0);
 
   // Check that timer0 reset
-  any_result = WaitAny({timer0.get(), timer1.get()}, false, 100ms);
+  any_result = WaitAny({timer0.get(), timer1.get()}, false, 10ms);
   REQUIRE(any_result.first == WaitResult::kSuccess);
   REQUIRE(any_result.second == 1);
 }
@@ -765,14 +765,14 @@ TEST_CASE("Create and Run Thread", "Thread") {
   std::unique_ptr<Thread> thread;
   WaitResult result;
   Thread::CreationParameters params = {};
-  auto func = [] { Sleep(20ms); };
+  auto func = [] { Sleep(20ns); };
 
   // Create most basic case of thread
   thread = Thread::Create(params, func);
   REQUIRE(thread->native_handle() != nullptr);
   REQUIRE_NOTHROW(thread->affinity_mask());
   REQUIRE(thread->name().empty());
-  result = Wait(thread.get(), false, 50ms);
+  result = Wait(thread.get(), false, 5ms);
   REQUIRE(result == WaitResult::kSuccess);
 
   // Add thread name
@@ -783,7 +783,7 @@ TEST_CASE("Create and Run Thread", "Thread") {
   REQUIRE(name.empty());
   thread->set_name(new_name);
   REQUIRE(thread->name() == new_name);
-  result = Wait(thread.get(), false, 50ms);
+  result = Wait(thread.get(), false, 5ms);
   REQUIRE(result == WaitResult::kSuccess);
 
   // Use Terminate to end an infinitely looping thread
@@ -792,10 +792,10 @@ TEST_CASE("Create and Run Thread", "Thread") {
       Sleep(1ms);
     }
   });
-  result = Wait(thread.get(), false, 50ms);
+  result = Wait(thread.get(), false, 5ms);
   REQUIRE(result == WaitResult::kTimeout);
   thread->Terminate(-1);
-  result = Wait(thread.get(), false, 50ms);
+  result = Wait(thread.get(), false, 5ms);
   REQUIRE(result == WaitResult::kSuccess);
 
   // Call Exit from inside an infinitely looping thread
@@ -804,11 +804,11 @@ TEST_CASE("Create and Run Thread", "Thread") {
       Thread::Exit(-1);
     }
   });
-  result = Wait(thread.get(), false, 50ms);
+  result = Wait(thread.get(), false, 5ms);
   REQUIRE(result == WaitResult::kSuccess);
 
   // Call timeout wait on self
-  result = Wait(Thread::GetCurrentThread(), false, 50ms);
+  result = Wait(Thread::GetCurrentThread(), false, 5ms);
   REQUIRE(result == WaitResult::kTimeout);
 
   params.stack_size = 16 * 1024;
@@ -818,7 +818,7 @@ TEST_CASE("Create and Run Thread", "Thread") {
     }
   });
   REQUIRE(thread != nullptr);
-  result = Wait(thread.get(), false, 50ms);
+  result = Wait(thread.get(), false, 5ms);
   REQUIRE(result == WaitResult::kSuccess);
 
   // TODO(bwrsandman): Test with different priorities
@@ -829,38 +829,38 @@ TEST_CASE("Test Suspending Thread", "Thread") {
   std::unique_ptr<Thread> thread;
   WaitResult result;
   Thread::CreationParameters params = {};
-  auto func = [] { Sleep(20ms); };
+  auto func = [] { Sleep(20us); };
 
   // Create initially suspended
   params.create_suspended = true;
   thread = threading::Thread::Create(params, func);
-  result = threading::Wait(thread.get(), false, 50ms);
+  result = threading::Wait(thread.get(), false, 5ms);
   REQUIRE(result == threading::WaitResult::kTimeout);
   thread->Resume();
-  result = threading::Wait(thread.get(), false, 50ms);
+  result = threading::Wait(thread.get(), false, 5ms);
   REQUIRE(result == threading::WaitResult::kSuccess);
   params.create_suspended = false;
 
   // Create and then suspend
   thread = threading::Thread::Create(params, func);
   thread->Suspend();
-  result = threading::Wait(thread.get(), false, 50ms);
+  result = threading::Wait(thread.get(), false, 5ms);
   REQUIRE(result == threading::WaitResult::kTimeout);
   thread->Resume();
-  result = threading::Wait(thread.get(), false, 50ms);
+  result = threading::Wait(thread.get(), false, 5ms);
   REQUIRE(result == threading::WaitResult::kSuccess);
 
   // Test recursive suspend
   thread = threading::Thread::Create(params, func);
   thread->Suspend();
   thread->Suspend();
-  result = threading::Wait(thread.get(), false, 50ms);
+  result = threading::Wait(thread.get(), false, 5ms);
   REQUIRE(result == threading::WaitResult::kTimeout);
   thread->Resume();
-  result = threading::Wait(thread.get(), false, 50ms);
+  result = threading::Wait(thread.get(), false, 5ms);
   REQUIRE(result == threading::WaitResult::kTimeout);
   thread->Resume();
-  result = threading::Wait(thread.get(), false, 50ms);
+  result = threading::Wait(thread.get(), false, 5ms);
   REQUIRE(result == threading::WaitResult::kSuccess);
 
   // Test suspend count
@@ -882,7 +882,7 @@ TEST_CASE("Test Suspending Thread", "Thread") {
   REQUIRE(suspend_count == 0);
   thread->Resume(&suspend_count);
   REQUIRE(suspend_count == 1);
-  result = threading::Wait(thread.get(), false, 50ms);
+  result = threading::Wait(thread.get(), false, 5ms);
   REQUIRE(result == threading::WaitResult::kSuccess);
 }
 
@@ -904,15 +904,15 @@ TEST_CASE("Test Thread QueueUserCallback", "Thread") {
   has_finished = -1;
   thread = Thread::Create(params, [&has_finished, &order] {
     // Not using Alertable so callback is not registered
-    Sleep(90ms);
+    Sleep(9ms);
     has_finished = std::atomic_fetch_add_explicit(
         &order, 1, std::memory_order::memory_order_relaxed);
   });
-  result = Wait(thread.get(), true, 50ms);
+  result = Wait(thread.get(), true, 5ms);
   REQUIRE(result == WaitResult::kTimeout);
   REQUIRE(is_modified == -1);
   thread->QueueUserCallback(callback);
-  result = Wait(thread.get(), true, 100ms);
+  result = Wait(thread.get(), true, 10ms);
   REQUIRE(result == WaitResult::kSuccess);
   REQUIRE(is_modified == -1);
   REQUIRE(has_finished == 0);
@@ -923,15 +923,15 @@ TEST_CASE("Test Thread QueueUserCallback", "Thread") {
   has_finished = -1;
   thread = Thread::Create(params, [&has_finished, &order] {
     // Using Alertable so callback is registered
-    AlertableSleep(90ms);
+    AlertableSleep(9ms);
     has_finished = std::atomic_fetch_add_explicit(
         &order, 1, std::memory_order::memory_order_relaxed);
   });
-  result = Wait(thread.get(), true, 50ms);
+  result = Wait(thread.get(), true, 5ms);
   REQUIRE(result == WaitResult::kTimeout);
   REQUIRE(is_modified == -1);
   thread->QueueUserCallback(callback);
-  result = Wait(thread.get(), true, 100ms);
+  result = Wait(thread.get(), true, 10ms);
   REQUIRE(result == WaitResult::kSuccess);
   REQUIRE(is_modified == 0);
   REQUIRE(has_finished == 1);
@@ -944,14 +944,14 @@ TEST_CASE("Test Thread QueueUserCallback", "Thread") {
     is_modified = std::atomic_fetch_add_explicit(
         &order, 1, std::memory_order::memory_order_relaxed);
     // Using Alertable so callback is registered
-    AlertableSleep(200ms);
+    AlertableSleep(20ms);
     has_finished = std::atomic_fetch_add_explicit(
         &order, 1, std::memory_order::memory_order_relaxed);
   });
-  result = Wait(thread.get(), true, 100ms);
+  result = Wait(thread.get(), true, 10ms);
   REQUIRE(result == WaitResult::kTimeout);
   thread->QueueUserCallback([] { Thread::Exit(0); });
-  result = Wait(thread.get(), true, 500ms);
+  result = Wait(thread.get(), true, 50ms);
   REQUIRE(result == WaitResult::kSuccess);
   REQUIRE(is_modified == 0);
   REQUIRE(has_finished == -1);
