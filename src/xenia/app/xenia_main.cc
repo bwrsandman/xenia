@@ -37,6 +37,7 @@
 
 // Available input drivers:
 #include "xenia/hid/nop/nop_hid.h"
+#include "xenia/hid/sdlpad/sdlpad_hid.h"
 #if XE_PLATFORM_WIN32
 #include "xenia/hid/winkey/winkey_hid.h"
 #include "xenia/hid/xinput/xinput_hid.h"
@@ -47,8 +48,8 @@
 DEFINE_string(apu, "any", "Audio system. Use: [any, nop, xaudio2]", "APU");
 DEFINE_string(gpu, "any",
               "Graphics system. Use: [any, d3d12, vulkan, vk, null]", "GPU");
-DEFINE_string(hid, "any", "Input system. Use: [any, nop, winkey, xinput]",
-              "HID");
+DEFINE_string(hid, "any",
+              "Input system. Use: [any, nop, sdlpad, winkey, xinput]", "HID");
 
 DEFINE_bool(fullscreen, false, "Toggles fullscreen", "GPU");
 
@@ -179,6 +180,7 @@ std::vector<std::unique_ptr<hid::InputDriver>> CreateInputDrivers(
     // WinKey input driver should always be the last input driver added!
     factory.Add("winkey", xe::hid::winkey::Create);
 #endif  // XE_PLATFORM_WIN32
+    factory.Add("sdlpad", xe::hid::sdlpad::Create);
     for (auto& driver : factory.CreateAll(cvars::hid, window)) {
       if (XSUCCEEDED(driver->Setup())) {
         drivers.emplace_back(std::move(driver));

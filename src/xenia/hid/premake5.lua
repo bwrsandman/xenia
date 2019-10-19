@@ -26,6 +26,7 @@ project("xenia-hid-demo")
     "xenia-base",
     "xenia-hid",
     "xenia-hid-nop",
+    "xenia-hid-sdlpad",
     "xenia-ui",
     "xenia-ui-vulkan",
   })
@@ -48,6 +49,7 @@ project("xenia-hid-demo")
       "X11-xcb",
       "GL",
       "vulkan",
+      "SDL2",
     })
 
   filter("platforms:Windows")

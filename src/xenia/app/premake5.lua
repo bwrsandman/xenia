@@ -35,6 +35,7 @@ project("xenia-app")
     "xenia-gpu-vulkan",
     "xenia-hid",
     "xenia-hid-nop",
+    "xenia-hid-sdlpad",
     "xenia-kernel",
     "xenia-ui",
     "xenia-ui-spirv",
@@ -73,15 +74,22 @@ project("xenia-app")
       "X11-xcb",
       "GL",
       "vulkan",
+      "SDL2",
     })
 
   filter("platforms:Windows")
     links({
+      "delayimp", -- Enable dll delayed loading for msvc
       "xenia-apu-xaudio2",
       "xenia-gpu-d3d12",
       "xenia-hid-winkey",
       "xenia-hid-xinput",
       "xenia-ui-d3d12",
+    })
+
+  filter("platforms:Windows")
+    linkoptions({
+      "/DELAYLOAD:SDL2.dll",  -- SDL is not mandatory since on windows, XInput is the preferred input method
     })
 
   filter("platforms:Windows")
