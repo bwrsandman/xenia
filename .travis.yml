@@ -24,6 +24,8 @@ addons:
       #- libvulkan-dev
       - libx11-dev
       - liblz4-dev
+      - libiberty-dev
+      - libunwind-dev
 
 matrix:
   include:

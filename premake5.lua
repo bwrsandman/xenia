@@ -104,6 +104,8 @@ filter("platforms:Linux")
     "dl",
     "lz4",
     "rt",
+    "unwind",
+    "iberty",
   })
   linkoptions({
     "`pkg-config --libs gtk+-3.0`",
