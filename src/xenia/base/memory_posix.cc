@@ -87,7 +87,8 @@ FileMappingHandle CreateFileMappingHandle(std::wstring path, size_t length,
   }
 
   oflag |= O_CREAT;
-  int ret = shm_open(xe::to_string(path).c_str(), oflag, 0777);
+  std::string full_path = "/" + xe::to_string(path);
+  int ret = shm_open(full_path.c_str(), oflag, 0777);
   if (ret > 0) {
     ftruncate64(ret, length);
   }
@@ -95,8 +96,9 @@ FileMappingHandle CreateFileMappingHandle(std::wstring path, size_t length,
   return ret <= 0 ? nullptr : reinterpret_cast<FileMappingHandle>(ret);
 }
 
-void CloseFileMappingHandle(FileMappingHandle handle) {
-  close(static_cast<int>(reinterpret_cast<int64_t>(handle)));
+void CloseFileMappingHandle(FileMappingHandle handle, std::wstring path) {
+  std::string full_path = "/" + xe::to_string(path);
+  shm_unlink(full_path.c_str());
 }
 
 void* MapFileView(FileMappingHandle handle, void* base_address, size_t length,

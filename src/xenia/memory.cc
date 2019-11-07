@@ -112,7 +112,7 @@ Memory::~Memory() {
   // Unmap all views and close mapping.
   if (mapping_) {
     UnmapViews();
-    xe::memory::CloseFileMappingHandle(mapping_);
+    xe::memory::CloseFileMappingHandle(mapping_, file_name_);
     mapping_base_ = nullptr;
     mapping_ = nullptr;
   }
@@ -122,7 +122,7 @@ Memory::~Memory() {
 }
 
 bool Memory::Initialize() {
-  file_name_ = std::wstring(L"Local\\xenia_memory_") +
+  file_name_ = std::wstring(L"xenia_memory_") +
                std::to_wstring(Clock::QueryHostTickCount());
 
   // Create main page file-backed mapping. This is all reserved but

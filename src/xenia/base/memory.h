@@ -99,7 +99,7 @@ typedef void* FileMappingHandle;
 
 FileMappingHandle CreateFileMappingHandle(std::wstring path, size_t length,
                                           PageAccess access, bool commit);
-void CloseFileMappingHandle(FileMappingHandle handle);
+void CloseFileMappingHandle(FileMappingHandle handle, std::wstring path);
 void* MapFileView(FileMappingHandle handle, void* base_address, size_t length,
                   PageAccess access, size_t file_offset);
 bool UnmapFileView(FileMappingHandle handle, void* base_address, size_t length);
