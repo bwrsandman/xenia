@@ -28,14 +28,14 @@ class UIEvent {
 
 class FileDropEvent : public UIEvent {
  public:
-  FileDropEvent(Window* target, wchar_t* filename)
+  FileDropEvent(Window* target, char16_t* filename)
       : UIEvent(target), filename_(filename) {}
   ~FileDropEvent() override = default;
 
-  wchar_t* filename() const { return filename_; }
+  char16_t* filename() const { return filename_; }
 
  private:
-  wchar_t* filename_ = nullptr;
+  char16_t* filename_ = nullptr;
 };
 
 class KeyEvent : public UIEvent {

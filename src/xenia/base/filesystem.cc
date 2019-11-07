@@ -96,7 +96,7 @@ std::string CanonicalizePath(const std::string& original_path) {
   return path;
 }
 
-bool CreateParentFolder(const std::wstring& path) {
+bool CreateParentFolder(const std::u16string& path) {
   auto fixed_path = xe::fix_path_separators(path);
   auto base_path = xe::find_base_path(fixed_path);
   if (!base_path.empty() && !PathExists(base_path)) {

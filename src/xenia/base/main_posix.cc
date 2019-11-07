@@ -26,9 +26,9 @@ extern "C" int main(int argc, char** argv) {
   cvar::ParseLaunchArguments(argc, argv, entry_info.positional_usage,
                              entry_info.positional_options);
 
-  std::vector<std::wstring> args;
+  std::vector<std::u16string> args;
   for (int n = 0; n < argc; n++) {
-    args.push_back(xe::to_wstring(argv[n]));
+    args.push_back(xe::to_u16string(argv[n]));
   }
 
   // Initialize logging. Needs parsed FLAGS.

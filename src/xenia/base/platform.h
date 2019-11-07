@@ -105,7 +105,7 @@ template <typename T>
 const T kAllPathSeparators[3] = {T('\\'), T('/'), '\0'};
 
 // Launches a web browser to the given URL.
-void LaunchBrowser(const wchar_t* url);
+void LaunchBrowser(const char16_t* url);
 
 }  // namespace xe
 

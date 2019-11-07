@@ -21,15 +21,15 @@ namespace xe {
 namespace kernel {
 namespace xam {
 
-static const wchar_t* kThumbnailFileName = L"__thumbnail.png";
+static const char16_t* kThumbnailFileName = u"__thumbnail.png";
 
-static const wchar_t* kGameUserContentDirName = L"profile";
+static const char16_t* kGameUserContentDirName = u"profile";
 
 static int content_device_id_ = 0;
 
 ContentPackage::ContentPackage(KernelState* kernel_state, std::string root_name,
                                const XCONTENT_DATA& data,
-                               std::wstring package_path)
+                               std::u16string package_path)
     : kernel_state_(kernel_state), root_name_(std::move(root_name)) {
   device_path_ = std::string("\\Device\\Content\\") +
                  std::to_string(++content_device_id_) + "\\";
@@ -49,32 +49,32 @@ ContentPackage::~ContentPackage() {
 }
 
 ContentManager::ContentManager(KernelState* kernel_state,
-                               std::wstring root_path)
+                               std::u16string root_path)
     : kernel_state_(kernel_state), root_path_(std::move(root_path)) {}
 
 ContentManager::~ContentManager() = default;
 
-std::wstring ContentManager::ResolvePackageRoot(uint32_t content_type) {
-  wchar_t title_id[9] = L"00000000";
-  std::swprintf(title_id, 9, L"%.8X", kernel_state_->title_id());
+std::u16string ContentManager::ResolvePackageRoot(uint32_t content_type) {
+  char title_id[9] = "00000000";
+  std::snprintf(title_id, 9, "%.8X", kernel_state_->title_id());
 
-  std::wstring type_name;
+  std::u16string type_name;
   switch (content_type) {
     case 1:
       // Save games.
-      type_name = L"00000001";
+      type_name = u"00000001";
       break;
     case 2:
       // DLC from the marketplace.
-      type_name = L"00000002";
+      type_name = u"00000002";
       break;
     case 3:
       // Publisher content?
-      type_name = L"00000003";
+      type_name = u"00000003";
       break;
     case 0x000D0000:
       // ???
-      type_name = L"000D0000";
+      type_name = u"000D0000";
       break;
     default:
       assert_unhandled_case(data.content_type);
@@ -84,16 +84,16 @@ std::wstring ContentManager::ResolvePackageRoot(uint32_t content_type) {
   // Package root path:
   // content_root/title_id/type_name/
   auto package_root =
-      xe::join_paths(root_path_, xe::join_paths(title_id, type_name));
-  return package_root + xe::kPathSeparator<wchar_t>;
+      xe::join_paths(root_path_, xe::join_paths(xe::to_u16string(title_id), type_name));
+  return package_root + xe::kPathSeparator<char16_t>;
 }
 
-std::wstring ContentManager::ResolvePackagePath(const XCONTENT_DATA& data) {
+std::u16string ContentManager::ResolvePackagePath(const XCONTENT_DATA& data) {
   // Content path:
   // content_root/title_id/type_name/data_file_name/
   auto package_root = ResolvePackageRoot(data.content_type);
   auto package_path =
-      xe::join_paths(package_root, xe::to_wstring(data.file_name));
+      xe::join_paths(package_root, xe::to_u16string(data.file_name));
   package_path += xe::kPathSeparator<char>;
   return package_path;
 }
@@ -254,18 +254,18 @@ X_RESULT ContentManager::DeleteContent(const XCONTENT_DATA& data) {
   }
 }
 
-std::wstring ContentManager::ResolveGameUserContentPath() {
-  wchar_t title_id[9] = L"00000000";
-  std::swprintf(title_id, 9, L"%.8X", kernel_state_->title_id());
-  auto user_name = xe::to_wstring(kernel_state_->user_profile()->name());
+std::u16string ContentManager::ResolveGameUserContentPath() {
+  char title_id[9] = "00000000";
+  std::snprintf(title_id, 9, "%.8X", kernel_state_->title_id());
+  auto user_name = xe::to_u16string(kernel_state_->user_profile()->name());
 
   // Per-game per-profile data location:
   // content_root/title_id/profile/user_name
   auto package_root = xe::join_paths(
       root_path_,
-      xe::join_paths(title_id,
+      xe::join_paths(xe::to_u16string(title_id),
                      xe::join_paths(kGameUserContentDirName, user_name)));
-  return package_root + xe::kPathSeparator<wchar_t>;
+  return package_root + xe::kPathSeparator<char16_t>;
 }
 
 }  // namespace xam

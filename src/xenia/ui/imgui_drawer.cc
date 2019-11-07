@@ -153,7 +153,7 @@ void ImGuiDrawer::SetupFont() {
   // TODO(benvanik): jp font on other platforms?
   // https://github.com/Koruri/kibitaki looks really good, but is 1.5MiB.
   const char* jp_font_path = "C:\\Windows\\Fonts\\msgothic.ttc";
-  if (xe::filesystem::PathExists(xe::to_wstring(jp_font_path))) {
+  if (xe::filesystem::PathExists(xe::to_u16string(jp_font_path))) {
     ImFontConfig jp_font_config;
     jp_font_config.MergeMode = true;
     jp_font_config.OversampleH = jp_font_config.OversampleV = 1;

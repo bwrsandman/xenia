@@ -55,10 +55,10 @@ thread_local std::vector<char> log_format_buffer_(64 * 1024);
 
 class Logger {
  public:
-  explicit Logger(const std::wstring& app_name) : running_(true) {
+  explicit Logger(const std::u16string& app_name) : running_(true) {
     if (cvars::log_file.empty()) {
       // Default to app name.
-      auto file_path = app_name + L".log";
+      auto file_path = app_name + u".log";
       xe::filesystem::CreateParentFolder(file_path);
       file_ = xe::filesystem::OpenFile(file_path, "wt");
     } else {
@@ -67,7 +67,7 @@ class Logger {
       } else if (cvars::log_file == "stderr") {
         file_ = stderr;
       } else {
-        auto file_path = xe::to_wstring(cvars::log_file);
+        auto file_path = xe::to_u16string(cvars::log_file);
         xe::filesystem::CreateParentFolder(file_path);
         file_ = xe::filesystem::OpenFile(file_path, "wt");
       }
@@ -246,7 +246,7 @@ class Logger {
   std::unique_ptr<xe::threading::Thread> write_thread_;
 };
 
-void InitializeLogging(const std::wstring& app_name) {
+void InitializeLogging(const std::u16string& app_name) {
   auto mem = memory::AlignedAlloc<Logger>(0x10);
   logger_ = new (mem) Logger(app_name);
 }

@@ -56,8 +56,8 @@ DEFINE_string(
 
 namespace xe {
 
-Emulator::Emulator(const std::wstring& command_line,
-                   const std::wstring& content_root)
+Emulator::Emulator(const std::u16string& command_line,
+                   const std::u16string& content_root)
     : on_launch(),
       on_terminate(),
       on_exit(),
@@ -239,12 +239,12 @@ X_STATUS Emulator::TerminateTitle() {
 
   kernel_state_->TerminateTitle();
   title_id_ = 0;
-  game_title_ = L"";
+  game_title_ = u"";
   on_terminate();
   return X_STATUS_SUCCESS;
 }
 
-X_STATUS Emulator::LaunchPath(std::wstring path) {
+X_STATUS Emulator::LaunchPath(std::u16string path) {
   // Launch based on file type.
   // This is a silly guess based on file extension.
   auto last_slash = path.find_last_of(xe::kPathSeparator<char>);
@@ -259,7 +259,7 @@ X_STATUS Emulator::LaunchPath(std::wstring path) {
   auto extension = path.substr(last_dot);
   std::transform(extension.begin(), extension.end(), extension.begin(),
                  tolower);
-  if (extension == L".xex" || extension == L".elf" || extension == L".exe") {
+  if (extension == u".xex" || extension == u".elf" || extension == u".exe") {
     // Treat as a naked xex file.
     return LaunchXexFile(path);
   } else {
@@ -268,7 +268,7 @@ X_STATUS Emulator::LaunchPath(std::wstring path) {
   }
 }
 
-X_STATUS Emulator::LaunchXexFile(std::wstring path) {
+X_STATUS Emulator::LaunchXexFile(std::u16string path) {
   // We create a virtual filesystem pointing to its directory and symlink
   // that to the game filesystem.
   // e.g., /my/files/foo.xex will get a local fs at:
@@ -303,7 +303,7 @@ X_STATUS Emulator::LaunchXexFile(std::wstring path) {
   return CompleteLaunch(path, fs_path);
 }
 
-X_STATUS Emulator::LaunchDiscImage(std::wstring path) {
+X_STATUS Emulator::LaunchDiscImage(std::u16string path) {
   auto mount_path = "\\Device\\Cdrom0";
 
   // Register the disc image in the virtual filesystem.
@@ -326,7 +326,7 @@ X_STATUS Emulator::LaunchDiscImage(std::wstring path) {
   return CompleteLaunch(path, module_path);
 }
 
-X_STATUS Emulator::LaunchStfsContainer(std::wstring path) {
+X_STATUS Emulator::LaunchStfsContainer(std::u16string path) {
   auto mount_path = "\\Device\\Cdrom0";
 
   // Register the container in the virtual filesystem.
@@ -405,7 +405,7 @@ void Emulator::Resume() {
   }
 }
 
-bool Emulator::SaveToFile(const std::wstring& path) {
+bool Emulator::SaveToFile(const std::u16string& path) {
   Pause();
 
   filesystem::CreateFile(path);
@@ -433,7 +433,7 @@ bool Emulator::SaveToFile(const std::wstring& path) {
   return true;
 }
 
-bool Emulator::RestoreFromFile(const std::wstring& path) {
+bool Emulator::RestoreFromFile(const std::u16string& path) {
   // Restore the emulator state from a file
   auto map = MappedMemory::Open(path, MappedMemory::Mode::kReadWrite);
   if (!map) {
@@ -507,7 +507,7 @@ void Emulator::LaunchNextTitle() {
   auto xam = kernel_state()->GetKernelModule<kernel::xam::XamModule>("xam.xex");
   auto next_title = xam->loader_data().launch_path;
 
-  CompleteLaunch(L"", next_title);
+  CompleteLaunch(u"", next_title);
 }
 
 bool Emulator::ExceptionCallbackThunk(Exception* ex, void* data) {
@@ -640,11 +640,11 @@ std::string Emulator::FindLaunchModule() {
   return path + default_module;
 }
 
-X_STATUS Emulator::CompleteLaunch(const std::wstring& path,
+X_STATUS Emulator::CompleteLaunch(const std::u16string& path,
                                   const std::string& module_path) {
   // Reset state.
   title_id_ = 0;
-  game_title_ = L"";
+  game_title_ = u"";
   display_window_->SetIcon(nullptr, 0);
 
   // Allow xam to request module loads.
@@ -668,7 +668,7 @@ X_STATUS Emulator::CompleteLaunch(const std::wstring& path,
   if (module->title_id()) {
     char title_id[9] = {0};
     std::snprintf(title_id, xe::countof(title_id), "%08X", module->title_id());
-    config::LoadGameConfig(xe::to_wstring(title_id));
+    config::LoadGameConfig(xe::to_u16string(title_id));
     uint32_t resource_data = 0;
     uint32_t resource_size = 0;
     if (XSUCCEEDED(
@@ -676,7 +676,7 @@ X_STATUS Emulator::CompleteLaunch(const std::wstring& path,
       kernel::util::XdbfGameData db(
           module->memory()->TranslateVirtual(resource_data), resource_size);
       if (db.is_valid()) {
-        game_title_ = xe::to_wstring(db.title());
+        game_title_ = xe::to_u16string(db.title());
         auto icon_block = db.icon();
         if (icon_block) {
           display_window_->SetIcon(icon_block.buffer, icon_block.size);

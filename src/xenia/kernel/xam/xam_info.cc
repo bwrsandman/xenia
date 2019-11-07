@@ -111,8 +111,8 @@ void XamFormatTimeString(dword_t unk, qword_t filetime, lpvoid_t buffer,
 DECLARE_XAM_EXPORT1(XamFormatTimeString, kNone, kImplemented);
 
 dword_result_t keXamBuildResourceLocator(uint64_t module,
-                                         const wchar_t* container,
-                                         const wchar_t* resource,
+                                         const char16_t* container,
+                                         const char16_t* resource,
                                          lpvoid_t buffer,
                                          uint32_t buffer_length) {
   wchar_t buf[256];
@@ -151,7 +151,7 @@ dword_result_t XamBuildGamercardResourceLocator(lpwstring_t filename,
   // If you're running an app that'll need them, make sure to extract xam.xex
   // resources with xextool ("xextool -d . xam.xex") and add a .xzp extension.
 
-  return keXamBuildResourceLocator(0, L"gamercrd", filename.value().c_str(),
+  return keXamBuildResourceLocator(0, u"gamercrd", filename.value().c_str(),
                                    buffer, buffer_length);
 }
 DECLARE_XAM_EXPORT1(XamBuildGamercardResourceLocator, kNone, kImplemented);
@@ -160,7 +160,7 @@ dword_result_t XamBuildSharedSystemResourceLocator(lpwstring_t filename,
                                                    lpvoid_t buffer,
                                                    dword_t buffer_length) {
   // see notes inside XamBuildGamercardResourceLocator above
-  return keXamBuildResourceLocator(0, L"shrdres", filename.value().c_str(),
+  return keXamBuildResourceLocator(0, u"shrdres", filename.value().c_str(),
                                    buffer, buffer_length);
 }
 DECLARE_XAM_EXPORT1(XamBuildSharedSystemResourceLocator, kNone, kImplemented);
@@ -174,7 +174,7 @@ DECLARE_XAM_EXPORT1(XamBuildLegacySystemResourceLocator, kNone, kImplemented);
 
 dword_result_t XamBuildXamResourceLocator(lpwstring_t filename, lpvoid_t buffer,
                                           dword_t buffer_length) {
-  return keXamBuildResourceLocator(0, L"xam", filename.value().c_str(), buffer,
+  return keXamBuildResourceLocator(0, u"xam", filename.value().c_str(), buffer,
                                    buffer_length);
 }
 DECLARE_XAM_EXPORT1(XamBuildXamResourceLocator, kNone, kImplemented);

@@ -39,15 +39,15 @@ TraceDump::TraceDump() = default;
 
 TraceDump::~TraceDump() = default;
 
-int TraceDump::Main(const std::vector<std::wstring>& args) {
+int TraceDump::Main(const std::vector<std::u16string>& args) {
   // Grab path from the flag or unnamed argument.
-  std::wstring path;
-  std::wstring output_path;
+  std::u16string path;
+  std::u16string output_path;
   if (!cvars::target_trace_file.empty()) {
     // Passed as a named argument.
     // TODO(benvanik): find something better than gflags that supports
     // unicode.
-    path = xe::to_wstring(cvars::target_trace_file);
+    path = xe::to_u16string(cvars::target_trace_file);
   } else if (args.size() >= 2) {
     // Passed as an unnamed argument.
     path = args[1];
@@ -78,13 +78,13 @@ int TraceDump::Main(const std::vector<std::wstring>& args) {
   // Root file name for outputs.
   if (output_path.empty()) {
     base_output_path_ =
-        xe::fix_path_separators(xe::to_wstring(cvars::trace_dump_path));
+        xe::fix_path_separators(xe::to_u16string(cvars::trace_dump_path));
 
-    std::wstring output_name =
+    std::u16string output_name =
         xe::find_name_from_path(xe::fix_path_separators(path));
 
     // Strip the extension from the filename.
-    auto last_dot = output_name.find_last_of(L".");
+    auto last_dot = output_name.find_last_of(u".");
     if (last_dot != std::string::npos) {
       output_name = output_name.substr(0, last_dot);
     }
@@ -102,7 +102,7 @@ int TraceDump::Main(const std::vector<std::wstring>& args) {
 
 bool TraceDump::Setup() {
   // Create the emulator but don't initialize so we can setup the window.
-  emulator_ = std::make_unique<Emulator>(L"", L"");
+  emulator_ = std::make_unique<Emulator>(u"", u"");
   X_STATUS result = emulator_->Setup(
       nullptr, nullptr, [this]() { return CreateGraphicsSystem(); }, nullptr);
   if (XFAILED(result)) {
@@ -114,7 +114,7 @@ bool TraceDump::Setup() {
   return true;
 }
 
-bool TraceDump::Load(std::wstring trace_file_path) {
+bool TraceDump::Load(std::u16string trace_file_path) {
   trace_file_path_ = std::move(trace_file_path);
 
   if (!player_->Open(trace_file_path_)) {
@@ -138,7 +138,7 @@ int TraceDump::Run() {
   auto raw_image = graphics_system_->Capture();
   if (raw_image) {
     // Save framebuffer png.
-    std::string png_path = xe::to_string(base_output_path_ + L".png");
+    std::string png_path = xe::to_string(base_output_path_ + u".png");
     stbi_write_png(png_path.c_str(), static_cast<int>(raw_image->width),
                    static_cast<int>(raw_image->height), 4,
                    raw_image->data.data(), static_cast<int>(raw_image->stride));

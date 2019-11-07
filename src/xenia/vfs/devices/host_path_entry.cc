@@ -21,13 +21,13 @@ namespace xe {
 namespace vfs {
 
 HostPathEntry::HostPathEntry(Device* device, Entry* parent, std::string path,
-                             const std::wstring& local_path)
+                             const std::u16string& local_path)
     : Entry(device, parent, path), local_path_(local_path) {}
 
 HostPathEntry::~HostPathEntry() = default;
 
 HostPathEntry* HostPathEntry::Create(Device* device, Entry* parent,
-                                     const std::wstring& full_path,
+                                     const std::u16string& full_path,
                                      xe::filesystem::FileInfo file_info) {
   auto path = xe::join_paths(parent->path(), xe::to_string(file_info.name));
   auto entry = new HostPathEntry(device, parent, path, full_path);
@@ -73,7 +73,7 @@ std::unique_ptr<MappedMemory> HostPathEntry::OpenMapped(MappedMemory::Mode mode,
 
 std::unique_ptr<Entry> HostPathEntry::CreateEntryInternal(std::string name,
                                                           uint32_t attributes) {
-  auto full_path = xe::join_paths(local_path_, xe::to_wstring(name));
+  auto full_path = xe::join_paths(local_path_, xe::to_u16string(name));
   if (attributes & kFileAttributeDirectory) {
     if (!xe::filesystem::CreateFolder(full_path)) {
       return nullptr;
@@ -94,7 +94,7 @@ std::unique_ptr<Entry> HostPathEntry::CreateEntryInternal(std::string name,
 }
 
 bool HostPathEntry::DeleteEntryInternal(Entry* entry) {
-  auto full_path = xe::join_paths(local_path_, xe::to_wstring(entry->name()));
+  auto full_path = xe::join_paths(local_path_, xe::to_u16string(entry->name()));
   if (entry->attributes() & kFileAttributeDirectory) {
     // Delete entire directory and contents.
     return xe::filesystem::DeleteFolder(full_path);

@@ -5,7 +5,7 @@
 #include "xenia/base/logging.h"
 #include "xenia/base/string.h"
 
-std::shared_ptr<cpptoml::table> ParseFile(const std::wstring& filename) {
+std::shared_ptr<cpptoml::table> ParseFile(const std::u16string& filename) {
 #if XE_PLATFORM_WIN32
   std::ifstream file(filename);
 #else
@@ -21,9 +21,9 @@ std::shared_ptr<cpptoml::table> ParseFile(const std::wstring& filename) {
 
 CmdVar(config, "", "Specifies the target config to load.");
 namespace config {
-std::wstring config_name = L"xenia.config.toml";
-std::wstring config_folder;
-std::wstring config_path;
+std::u16string config_name = u"xenia.config.toml";
+std::u16string config_folder;
+std::u16string config_path;
 
 bool sortCvar(cvar::IConfigVar* a, cvar::IConfigVar* b) {
   if (a->category() < b->category()) return true;
@@ -32,7 +32,7 @@ bool sortCvar(cvar::IConfigVar* a, cvar::IConfigVar* b) {
   return false;
 }
 
-std::shared_ptr<cpptoml::table> ParseConfig(const std::wstring& config_path) {
+std::shared_ptr<cpptoml::table> ParseConfig(const std::u16string& config_path) {
   try {
     return ParseFile(config_path);
   } catch (cpptoml::parse_exception e) {
@@ -42,7 +42,7 @@ std::shared_ptr<cpptoml::table> ParseConfig(const std::wstring& config_path) {
   }
 }
 
-void ReadConfig(const std::wstring& file_path) {
+void ReadConfig(const std::u16string& file_path) {
   const auto config = ParseConfig(file_path);
   for (auto& it : *cvar::ConfigVars) {
     auto config_var = static_cast<cvar::IConfigVar*>(it.second);
@@ -54,7 +54,7 @@ void ReadConfig(const std::wstring& file_path) {
   XELOGI("Loaded config: %S", file_path.c_str());
 }
 
-void ReadGameConfig(std::wstring file_path) {
+void ReadGameConfig(const std::u16string& file_path) {
   const auto config = ParseConfig(file_path);
   for (auto& it : *cvar::ConfigVars) {
     auto config_var = static_cast<cvar::IConfigVar*>(it.second);
@@ -127,11 +127,11 @@ void SaveConfig() {
   file.close();
 }
 
-void SetupConfig(const std::wstring& config_folder) {
+void SetupConfig(const std::u16string& config_folder) {
   config::config_folder = config_folder;
   // check if the user specified a specific config to load
   if (!cvars::config.empty()) {
-    config_path = xe::to_wstring(cvars::config);
+    config_path = xe::to_u16string(cvars::config);
     if (xe::filesystem::PathExists(config_path)) {
       ReadConfig(config_path);
       return;
@@ -150,8 +150,8 @@ void SetupConfig(const std::wstring& config_folder) {
   }
 }
 
-void LoadGameConfig(const std::wstring& title_id) {
-  const auto content_folder = xe::join_paths(config_folder, L"content");
+void LoadGameConfig(const std::u16string& title_id) {
+  const auto content_folder = xe::join_paths(config_folder, u"content");
   const auto game_folder = xe::join_paths(content_folder, title_id);
   const auto game_config_path = xe::join_paths(game_folder, config_name);
   if (xe::filesystem::PathExists(game_config_path)) {

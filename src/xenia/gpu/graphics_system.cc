@@ -271,11 +271,11 @@ void GraphicsSystem::ClearCaches() {
 
 void GraphicsSystem::RequestFrameTrace() {
   command_processor_->RequestFrameTrace(
-      xe::to_wstring(cvars::trace_gpu_prefix));
+      xe::to_u16string(cvars::trace_gpu_prefix));
 }
 
 void GraphicsSystem::BeginTracing() {
-  command_processor_->BeginTracing(xe::to_wstring(cvars::trace_gpu_prefix));
+  command_processor_->BeginTracing(xe::to_u16string(cvars::trace_gpu_prefix));
 }
 
 void GraphicsSystem::EndTracing() { command_processor_->EndTracing(); }

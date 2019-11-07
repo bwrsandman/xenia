@@ -19,11 +19,11 @@
 namespace xe {
 namespace ui {
 
-std::unique_ptr<Window> Window::Create(Loop* loop, const std::wstring& title) {
+std::unique_ptr<Window> Window::Create(Loop* loop, const std::u16string& title) {
   return std::make_unique<GTKWindow>(loop, title);
 }
 
-GTKWindow::GTKWindow(Loop* loop, const std::wstring& title)
+GTKWindow::GTKWindow(Loop* loop, const std::u16string& title)
     : Window(loop, title) {}
 
 GTKWindow::~GTKWindow() {
@@ -141,7 +141,7 @@ void GTKWindow::OnClose() {
   super::OnClose();
 }
 
-bool GTKWindow::set_title(const std::wstring& title) {
+bool GTKWindow::set_title(const std::u16string& title) {
   if (!super::set_title(title)) {
     return false;
   }
@@ -422,8 +422,8 @@ bool GTKWindow::HandleKeyboard(GdkEventKey* event) {
 }
 
 std::unique_ptr<ui::MenuItem> MenuItem::Create(Type type,
-                                               const std::wstring& text,
-                                               const std::wstring& hotkey,
+                                               const std::u16string& text,
+                                               const std::u16string& hotkey,
                                                std::function<void()> callback) {
   return std::make_unique<GTKMenuItem>(type, text, hotkey, callback);
 }
@@ -441,8 +441,8 @@ void GTKMenuItem::Activate() {
   }
 }
 
-GTKMenuItem::GTKMenuItem(Type type, const std::wstring& text,
-                         const std::wstring& hotkey,
+GTKMenuItem::GTKMenuItem(Type type, const std::u16string& text,
+                         const std::u16string& hotkey,
                          std::function<void()> callback)
     : MenuItem(type, text, hotkey, std::move(callback)) {
   std::string label = xe::to_string(text);
@@ -464,7 +464,7 @@ GTKMenuItem::GTKMenuItem(Type type, const std::wstring& text,
     case MenuItem::Type::kString:
       auto full_name = text;
       if (!hotkey.empty()) {
-        full_name += L"  " + hotkey;
+        full_name += u"  " + hotkey;
       }
       menu_ = gtk_menu_item_new_with_mnemonic(gtk_label);
       break;

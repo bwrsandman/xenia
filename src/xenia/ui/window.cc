@@ -31,7 +31,7 @@ constexpr double kDoubleClickDistance = 5;
 
 constexpr int32_t kMouseWheelDetent = 120;
 
-Window::Window(Loop* loop, const std::wstring& title)
+Window::Window(Loop* loop, const std::u16string& title)
     : loop_(loop), title_(title) {}
 
 Window::~Window() {

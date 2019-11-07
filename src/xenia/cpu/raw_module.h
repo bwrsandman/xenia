@@ -22,7 +22,7 @@ class RawModule : public Module {
   explicit RawModule(Processor* processor);
   ~RawModule() override;
 
-  bool LoadFile(uint32_t base_address, const std::wstring& path);
+  bool LoadFile(uint32_t base_address, const std::u16string& path);
 
   // Set address range if you've already allocated memory and placed code
   // in it.

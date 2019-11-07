@@ -19,7 +19,7 @@ namespace xe {
 
 class PosixMappedMemory : public MappedMemory {
  public:
-  PosixMappedMemory(const std::wstring& path, Mode mode)
+  PosixMappedMemory(const std::u16string& path, Mode mode)
       : MappedMemory(path, mode), file_handle(nullptr) {}
 
   ~PosixMappedMemory() override {
@@ -34,7 +34,7 @@ class PosixMappedMemory : public MappedMemory {
   FILE* file_handle;
 };
 
-std::unique_ptr<MappedMemory> MappedMemory::Open(const std::wstring& path,
+std::unique_ptr<MappedMemory> MappedMemory::Open(const std::u16string& path,
                                                  Mode mode, size_t offset,
                                                  size_t length) {
   const char* mode_str;
@@ -77,7 +77,7 @@ std::unique_ptr<MappedMemory> MappedMemory::Open(const std::wstring& path,
 }
 
 std::unique_ptr<ChunkedMappedMemoryWriter> ChunkedMappedMemoryWriter::Open(
-    const std::wstring& path, size_t chunk_size, bool low_address_space) {
+    const std::u16string& path, size_t chunk_size, bool low_address_space) {
   // TODO(DrChat)
   return nullptr;
 }

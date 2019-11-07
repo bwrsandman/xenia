@@ -23,7 +23,7 @@
 namespace xe {
 namespace gpu {
 
-bool TraceReader::Open(const std::wstring& path) {
+bool TraceReader::Open(const std::u16string& path) {
   Close();
 
   mmap_ = MappedMemory::Open(path, MappedMemory::Mode::kRead);

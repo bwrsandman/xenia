@@ -49,14 +49,14 @@ TraceViewer::TraceViewer() = default;
 
 TraceViewer::~TraceViewer() = default;
 
-int TraceViewer::Main(const std::vector<std::wstring>& args) {
+int TraceViewer::Main(const std::vector<std::u16string>& args) {
   // Grab path from the flag or unnamed argument.
-  std::wstring path;
+  std::u16string path;
   if (!cvars::target_trace_file.empty()) {
     // Passed as a named argument.
     // TODO(benvanik): find something better than gflags that supports
     // unicode.
-    path = xe::to_wstring(cvars::target_trace_file);
+    path = xe::to_u16string(cvars::target_trace_file);
   } else if (args.size() >= 2) {
     // Passed as an unnamed argument.
     path = args[1];
@@ -68,10 +68,10 @@ int TraceViewer::Main(const std::vector<std::wstring>& args) {
     file_picker->set_mode(ui::FilePicker::Mode::kOpen);
     file_picker->set_type(ui::FilePicker::Type::kFile);
     file_picker->set_multi_selection(false);
-    file_picker->set_title(L"Select Trace File");
+    file_picker->set_title(u"Select Trace File");
     file_picker->set_extensions({
-        {L"Supported Files", L"*.xtr"},
-        {L"All Files (*.*)", L"*.*"},
+        {u"Supported Files", u"*.xtr"},
+        {u"All Files (*.*)", u"*.*"},
     });
     if (file_picker->Show()) {
       auto selected_files = file_picker->selected_files();
@@ -104,7 +104,7 @@ int TraceViewer::Main(const std::vector<std::wstring>& args) {
 bool TraceViewer::Setup() {
   // Main display window.
   loop_ = ui::Loop::Create();
-  window_ = xe::ui::Window::Create(loop_.get(), L"xenia-gpu-trace-viewer");
+  window_ = xe::ui::Window::Create(loop_.get(), u"xenia-gpu-trace-viewer");
   loop_->PostSynchronous([&]() {
     xe::threading::set_name("Win32 Loop");
     if (!window_->Initialize()) {
@@ -121,7 +121,7 @@ bool TraceViewer::Setup() {
   window_->Resize(1920, 1200);
 
   // Create the emulator but don't initialize so we can setup the window.
-  emulator_ = std::make_unique<Emulator>(L"", L"");
+  emulator_ = std::make_unique<Emulator>(u"", u"");
   X_STATUS result =
       emulator_->Setup(window_.get(), nullptr,
                        [this]() { return CreateGraphicsSystem(); }, nullptr);
@@ -154,9 +154,9 @@ bool TraceViewer::Setup() {
   return true;
 }
 
-bool TraceViewer::Load(std::wstring trace_file_path) {
+bool TraceViewer::Load(std::u16string trace_file_path) {
   auto file_name = xe::find_name_from_path(trace_file_path);
-  window_->set_title(std::wstring(L"Xenia GPU Trace Viewer: ") + file_name);
+  window_->set_title(std::u16string(u"Xenia GPU Trace Viewer: ") + file_name);
 
   if (!player_->Open(trace_file_path)) {
     XELOGE("Could not load trace file");

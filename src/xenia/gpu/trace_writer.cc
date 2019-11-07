@@ -27,7 +27,7 @@ TraceWriter::TraceWriter(uint8_t* membase)
 
 TraceWriter::~TraceWriter() = default;
 
-bool TraceWriter::Open(const std::wstring& path, uint32_t title_id) {
+bool TraceWriter::Open(const std::u16string& path, uint32_t title_id) {
   Close();
 
   auto canonical_path = xe::to_absolute_path(path);

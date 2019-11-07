@@ -39,7 +39,7 @@ void DiscordPresence::NotPlaying() {
   Discord_UpdatePresence(&discordPresence);
 }
 
-void DiscordPresence::PlayingTitle(const std::wstring& game_title) {
+void DiscordPresence::PlayingTitle(const std::u16string& game_title) {
   auto discord_game_title = xe::to_string(game_title);
   DiscordRichPresence discordPresence = {};
   discordPresence.state = "In Game";

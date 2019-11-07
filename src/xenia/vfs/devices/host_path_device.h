@@ -21,7 +21,7 @@ class HostPathEntry;
 
 class HostPathDevice : public Device {
  public:
-  HostPathDevice(const std::string& mount_path, const std::wstring& local_path,
+  HostPathDevice(const std::string& mount_path, const std::u16string& local_path,
                  bool read_only);
   ~HostPathDevice() override;
 
@@ -39,7 +39,7 @@ class HostPathDevice : public Device {
  private:
   void PopulateEntry(HostPathEntry* parent_entry);
 
-  std::wstring local_path_;
+  std::u16string local_path_;
   std::unique_ptr<Entry> root_entry_;
   bool read_only_;
 };

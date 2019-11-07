@@ -13,6 +13,7 @@
 #include <locale>
 #include <string>
 #include "xenia/base/assert.h"
+#include "xenia/base/string.h"
 #include "xenia/base/platform_linux.h"
 
 namespace xe {
@@ -54,10 +55,8 @@ bool GtkFilePicker::Show(void* parent_window_handle) {
   if (res == GTK_RESPONSE_ACCEPT) {
     GtkFileChooser* chooser = GTK_FILE_CHOOSER(dialog);
     filename = gtk_file_chooser_get_filename(chooser);
-    std::vector<std::wstring> selected_files;
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-    std::wstring ws_filename = converter.from_bytes(filename);
-    selected_files.push_back(ws_filename);
+    std::vector<std::u16string> selected_files;
+    selected_files.push_back(xe::to_u16string(filename));
     set_selected_files(selected_files);
     gtk_widget_destroy(dialog);
     return true;

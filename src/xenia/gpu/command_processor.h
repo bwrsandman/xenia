@@ -130,8 +130,8 @@ class CommandProcessor {
     swap_request_handler_ = fn;
   }
 
-  virtual void RequestFrameTrace(const std::wstring& root_path);
-  virtual void BeginTracing(const std::wstring& root_path);
+  virtual void RequestFrameTrace(const std::u16string& root_path);
+  virtual void BeginTracing(const std::u16string& root_path);
   virtual void EndTracing();
 
   virtual void TracePlaybackWroteMemory(uint32_t base_ptr, uint32_t length) = 0;
@@ -254,8 +254,8 @@ class CommandProcessor {
     kSingleFrame,
   };
   TraceState trace_state_ = TraceState::kDisabled;
-  std::wstring trace_stream_path_;
-  std::wstring trace_frame_path_;
+  std::u16string trace_stream_path_;
+  std::u16string trace_frame_path_;
 
   std::atomic<bool> worker_running_;
   kernel::object_ref<kernel::XHostThread> worker_thread_;

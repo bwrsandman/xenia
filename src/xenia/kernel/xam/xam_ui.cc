@@ -29,8 +29,8 @@ DECLARE_XAM_EXPORT2(XamIsUIActive, kUI, kImplemented, kHighFrequency);
 
 class MessageBoxDialog : public xe::ui::ImGuiDialog {
  public:
-  MessageBoxDialog(xe::ui::Window* window, std::wstring title,
-                   std::wstring description, std::vector<std::wstring> buttons,
+  MessageBoxDialog(xe::ui::Window* window, std::u16string title,
+                   std::u16string description, std::vector<std::u16string> buttons,
                    uint32_t default_button, uint32_t* out_chosen_button)
       : ImGuiDialog(window),
         title_(xe::to_string(title)),
@@ -79,7 +79,7 @@ class MessageBoxDialog : public xe::ui::ImGuiDialog {
   bool has_opened_ = false;
   std::string title_;
   std::string description_;
-  std::vector<std::wstring> buttons_;
+  std::vector<std::u16string> buttons_;
   uint32_t default_button_ = 0;
   uint32_t* out_chosen_button_ = nullptr;
 };
@@ -90,23 +90,23 @@ dword_result_t XamShowMessageBoxUI(dword_t user_index, lpwstring_t title_ptr,
                                    lpdword_t button_ptrs, dword_t active_button,
                                    dword_t flags, lpdword_t result_ptr,
                                    pointer_t<XAM_OVERLAPPED> overlapped) {
-  std::wstring title;
+  std::u16string title;
   if (title_ptr) {
     title = title_ptr.value();
   } else {
-    title = L"";  // TODO(gibbed): default title based on flags?
+    title = u"";  // TODO(gibbed): default title based on flags?
   }
   auto text = text_ptr.value();
 
-  std::vector<std::wstring> buttons;
-  std::wstring all_buttons;
+  std::vector<std::u16string> buttons;
+  std::u16string all_buttons;
   for (uint32_t j = 0; j < button_count; ++j) {
     uint32_t button_ptr = button_ptrs[j];
-    auto button = xe::load_and_swap<std::wstring>(
+    auto button = xe::load_and_swap<std::u16string>(
         kernel_state()->memory()->TranslateVirtual(button_ptr));
     all_buttons.append(button);
     if (j + 1 < button_count) {
-      all_buttons.append(L" | ");
+      all_buttons.append(u" | ");
     }
     buttons.push_back(button);
   }
@@ -161,9 +161,9 @@ DECLARE_XAM_EXPORT1(XamShowMessageBoxUI, kUI, kImplemented);
 
 class KeyboardInputDialog : public xe::ui::ImGuiDialog {
  public:
-  KeyboardInputDialog(xe::ui::Window* window, std::wstring title,
-                      std::wstring description, std::wstring default_text,
-                      std::wstring* out_text, size_t max_length)
+  KeyboardInputDialog(xe::ui::Window* window, std::u16string title,
+                      std::u16string description, std::u16string default_text,
+                      std::u16string* out_text, size_t max_length)
       : ImGuiDialog(window),
         title_(xe::to_string(title)),
         description_(xe::to_string(description)),
@@ -194,14 +194,14 @@ class KeyboardInputDialog : public xe::ui::ImGuiDialog {
       if (ImGui::InputText("##body", text_buffer_.data(), text_buffer_.size(),
                            ImGuiInputTextFlags_EnterReturnsTrue)) {
         if (out_text_) {
-          *out_text_ = xe::to_wstring(text_buffer_.data());
+          *out_text_ = xe::to_u16string(text_buffer_.data());
         }
         ImGui::CloseCurrentPopup();
         Close();
       }
       if (ImGui::Button("OK")) {
         if (out_text_) {
-          *out_text_ = xe::to_wstring(text_buffer_.data());
+          *out_text_ = xe::to_u16string(text_buffer_.data());
         }
         ImGui::CloseCurrentPopup();
         Close();
@@ -223,7 +223,7 @@ class KeyboardInputDialog : public xe::ui::ImGuiDialog {
   std::string title_;
   std::string description_;
   std::string default_text_;
-  std::wstring* out_text_ = nullptr;
+  std::u16string* out_text_ = nullptr;
   std::vector<char> text_buffer_;
   size_t max_length_ = 0;
 };
@@ -245,7 +245,7 @@ dword_result_t XamShowKeyboardUI(dword_t user_index, dword_t flags,
     // Redirect default_text back into the buffer.
     std::memset(buffer, 0, buffer_length * 2);
     if (default_text) {
-      xe::store_and_swap<std::wstring>(buffer, default_text.value());
+      xe::store_and_swap<std::u16string>(buffer, default_text.value());
     }
 
     // Broadcast XN_SYS_UI = false
@@ -259,14 +259,14 @@ dword_result_t XamShowKeyboardUI(dword_t user_index, dword_t flags,
     }
   }
 
-  std::wstring out_text;
+  std::u16string out_text;
 
   auto display_window = kernel_state()->emulator()->display_window();
   xe::threading::Fence fence;
   display_window->loop()->PostSynchronous([&]() {
-    (new KeyboardInputDialog(display_window, title ? title.value() : L"",
-                             description ? description.value() : L"",
-                             default_text ? default_text.value() : L"",
+    (new KeyboardInputDialog(display_window, title ? title.value() : u"",
+                             description ? description.value() : u"",
+                             default_text ? default_text.value() : u"",
                              &out_text, buffer_length))
         ->Then(&fence);
   });
@@ -279,7 +279,7 @@ dword_result_t XamShowKeyboardUI(dword_t user_index, dword_t flags,
 
   // Truncate the string.
   out_text = out_text.substr(0, buffer_length - 1);
-  xe::store_and_swap<std::wstring>(buffer, out_text);
+  xe::store_and_swap<std::u16string>(buffer, out_text);
 
   // Broadcast XN_SYS_UI = false
   kernel_state()->BroadcastNotification(0x9, false);

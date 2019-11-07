@@ -34,7 +34,7 @@ class FilePicker {
   FilePicker()
       : mode_(Mode::kOpen),
         type_(Type::kFile),
-        title_(L"Select Files"),
+        title_(u"Select Files"),
         multi_selection_(false) {}
   virtual ~FilePicker() = default;
 
@@ -44,14 +44,14 @@ class FilePicker {
   Type type() const { return type_; }
   void set_type(Type type) { type_ = type; }
 
-  std::wstring title() const { return title_; }
-  void set_title(std::wstring title) { title_ = std::move(title); }
+  std::u16string title() const { return title_; }
+  void set_title(std::u16string title) { title_ = std::move(title); }
 
-  std::vector<std::pair<std::wstring, std::wstring>> extensions() const {
+  std::vector<std::pair<std::u16string, std::u16string>> extensions() const {
     return extensions_;
   }
   void set_extensions(
-      std::vector<std::pair<std::wstring, std::wstring>> extensions) {
+      std::vector<std::pair<std::u16string, std::u16string>> extensions) {
     extensions_ = std::move(extensions);
   }
 
@@ -60,8 +60,8 @@ class FilePicker {
     multi_selection_ = multi_selection;
   }
 
-  std::vector<std::wstring> selected_files() const { return selected_files_; }
-  void set_selected_files(std::vector<std::wstring> selected_files) {
+  std::vector<std::u16string> selected_files() const { return selected_files_; }
+  void set_selected_files(std::vector<std::u16string> selected_files) {
     selected_files_ = std::move(selected_files);
   }
 
@@ -70,11 +70,11 @@ class FilePicker {
  private:
   Mode mode_;
   Type type_;
-  std::wstring title_;
-  std::vector<std::pair<std::wstring, std::wstring>> extensions_;
+  std::u16string title_;
+  std::vector<std::pair<std::u16string, std::u16string>> extensions_;
   bool multi_selection_;
 
-  std::vector<std::wstring> selected_files_;
+  std::vector<std::u16string> selected_files_;
 };
 
 }  // namespace ui

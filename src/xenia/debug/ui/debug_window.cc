@@ -48,7 +48,7 @@ using xe::ui::MenuItem;
 using xe::ui::MouseEvent;
 using xe::ui::UIEvent;
 
-const std::wstring kBaseTitle = L"Xenia Debugger";
+const std::u16string kBaseTitle = u"Xenia Debugger";
 
 DebugWindow::DebugWindow(Emulator* emulator, xe::ui::Loop* loop)
     : emulator_(emulator),
@@ -91,10 +91,10 @@ bool DebugWindow::Initialize() {
 
   // Main menu.
   auto main_menu = MenuItem::Create(MenuItem::Type::kNormal);
-  auto file_menu = MenuItem::Create(MenuItem::Type::kPopup, L"&File");
+  auto file_menu = MenuItem::Create(MenuItem::Type::kPopup, u"&File");
   {
-    file_menu->AddChild(MenuItem::Create(MenuItem::Type::kString, L"&Close",
-                                         L"Alt+F4",
+    file_menu->AddChild(MenuItem::Create(MenuItem::Type::kString, u"&Close",
+                                         u"Alt+F4",
                                          [this]() { window_->Close(); }));
   }
   main_menu->AddChild(std::move(file_menu));
@@ -1427,19 +1427,19 @@ void DebugWindow::UpdateCache() {
   auto object_table = kernel_state->object_table();
 
   loop_->Post([this]() {
-    std::wstring title = kBaseTitle;
+    std::u16string title = kBaseTitle;
     switch (processor_->execution_state()) {
       case cpu::ExecutionState::kEnded:
-        title += L" (ended)";
+        title += u" (ended)";
         break;
       case cpu::ExecutionState::kPaused:
-        title += L" (paused)";
+        title += u" (paused)";
         break;
       case cpu::ExecutionState::kRunning:
-        title += L" (running)";
+        title += u" (running)";
         break;
       case cpu::ExecutionState::kStepping:
-        title += L" (stepping)";
+        title += u" (stepping)";
         break;
     }
     window_->set_title(title);

@@ -43,7 +43,7 @@ class EmulatorWindow {
 
   bool Initialize();
 
-  void FileDrop(wchar_t* filename);
+  void FileDrop(char16_t* filename);
   void FileOpen();
   void FileClose();
   void ShowContentDirectory();
@@ -60,7 +60,7 @@ class EmulatorWindow {
   Emulator* emulator_;
   std::unique_ptr<ui::Loop> loop_;
   std::unique_ptr<ui::Window> window_;
-  std::wstring base_title_;
+  std::u16string base_title_;
   uint64_t cursor_hide_time_ = 0;
 };
 

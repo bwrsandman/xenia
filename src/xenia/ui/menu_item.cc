@@ -13,21 +13,21 @@ namespace xe {
 namespace ui {
 
 std::unique_ptr<MenuItem> MenuItem::Create(Type type) {
-  return MenuItem::Create(type, L"", L"", nullptr);
+  return MenuItem::Create(type, u"", u"", nullptr);
 }
 
 std::unique_ptr<MenuItem> MenuItem::Create(Type type,
-                                           const std::wstring& text) {
-  return MenuItem::Create(type, text, L"", nullptr);
+                                           const std::u16string& text) {
+  return MenuItem::Create(type, text, u"", nullptr);
 }
 
-std::unique_ptr<MenuItem> MenuItem::Create(Type type, const std::wstring& text,
+std::unique_ptr<MenuItem> MenuItem::Create(Type type, const std::u16string& text,
                                            std::function<void()> callback) {
-  return MenuItem::Create(type, text, L"", std::move(callback));
+  return MenuItem::Create(type, text, u"", std::move(callback));
 }
 
-MenuItem::MenuItem(Type type, const std::wstring& text,
-                   const std::wstring& hotkey, std::function<void()> callback)
+MenuItem::MenuItem(Type type, const std::u16string& text,
+                   const std::u16string& hotkey, std::function<void()> callback)
     : type_(type),
       parent_item_(nullptr),
       text_(text),

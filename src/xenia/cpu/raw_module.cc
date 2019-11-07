@@ -23,7 +23,7 @@ RawModule::RawModule(Processor* processor)
 
 RawModule::~RawModule() {}
 
-bool RawModule::LoadFile(uint32_t base_address, const std::wstring& path) {
+bool RawModule::LoadFile(uint32_t base_address, const std::u16string& path) {
   auto fixed_path = xe::fix_path_separators(path);
   FILE* file = xe::filesystem::OpenFile(fixed_path, "rb");
   fseek(file, 0, SEEK_END);

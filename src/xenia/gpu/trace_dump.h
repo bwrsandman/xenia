@@ -36,7 +36,7 @@ class TraceDump {
  public:
   virtual ~TraceDump();
 
-  int Main(const std::vector<std::wstring>& args);
+  int Main(const std::vector<std::u16string>& args);
 
  protected:
   TraceDump();
@@ -52,11 +52,11 @@ class TraceDump {
 
  private:
   bool Setup();
-  bool Load(std::wstring trace_file_path);
+  bool Load(std::u16string trace_file_path);
   int Run();
 
-  std::wstring trace_file_path_;
-  std::wstring base_output_path_;
+  std::u16string trace_file_path_;
+  std::u16string base_output_path_;
 };
 
 }  // namespace gpu

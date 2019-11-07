@@ -24,10 +24,10 @@ bool has_console_attached();
 // Extern defined by user code. This must be present for the application to
 // launch.
 struct EntryInfo {
-  std::wstring name;
+  std::u16string name;
   std::string positional_usage;
   std::vector<std::string> positional_options;
-  int (*entry_point)(const std::vector<std::wstring>& args);
+  int (*entry_point)(const std::vector<std::u16string>& args);
 };
 EntryInfo GetEntryInfo();
 

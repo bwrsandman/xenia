@@ -19,7 +19,7 @@ VulkanGraphicsSystem::VulkanGraphicsSystem() {}
 
 VulkanGraphicsSystem::~VulkanGraphicsSystem() {}
 
-std::wstring VulkanGraphicsSystem::name() const { return L"Vulkan Prototype"; }
+std::u16string VulkanGraphicsSystem::name() const { return u"Vulkan Prototype"; }
 
 X_STATUS VulkanGraphicsSystem::Setup(cpu::Processor* processor,
                                      kernel::KernelState* kernel_state,

@@ -23,14 +23,14 @@ class HostPathDevice;
 class HostPathEntry : public Entry {
  public:
   HostPathEntry(Device* device, Entry* parent, std::string path,
-                const std::wstring& local_path);
+                const std::u16string& local_path);
   ~HostPathEntry() override;
 
   static HostPathEntry* Create(Device* device, Entry* parent,
-                               const std::wstring& full_path,
+                               const std::u16string& full_path,
                                xe::filesystem::FileInfo file_info);
 
-  const std::wstring& local_path() { return local_path_; }
+  const std::u16string& local_path() { return local_path_; }
 
   X_STATUS Open(uint32_t desired_access, File** out_file) override;
 
@@ -47,7 +47,7 @@ class HostPathEntry : public Entry {
                                              uint32_t attributes) override;
   bool DeleteEntryInternal(Entry* entry) override;
 
-  std::wstring local_path_;
+  std::u16string local_path_;
 };
 
 }  // namespace vfs

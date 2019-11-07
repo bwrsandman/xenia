@@ -22,13 +22,13 @@ class MappedMemory {
     kReadWrite,
   };
 
-  static std::unique_ptr<MappedMemory> Open(const std::wstring& path, Mode mode,
+  static std::unique_ptr<MappedMemory> Open(const std::u16string& path, Mode mode,
                                             size_t offset = 0,
                                             size_t length = 0);
 
-  MappedMemory(const std::wstring& path, Mode mode)
+  MappedMemory(const std::u16string& path, Mode mode)
       : path_(path), mode_(mode), data_(nullptr), size_(0) {}
-  MappedMemory(const std::wstring& path, Mode mode, void* data, size_t size)
+  MappedMemory(const std::u16string& path, Mode mode, void* data, size_t size)
       : path_(path), mode_(mode), data_(data), size_(size) {}
   virtual ~MappedMemory() = default;
 
@@ -48,7 +48,7 @@ class MappedMemory {
   virtual bool Remap(size_t offset, size_t length) { return false; }
 
  protected:
-  std::wstring path_;
+  std::u16string path_;
   Mode mode_;
   void* data_;
   size_t size_;
@@ -59,7 +59,7 @@ class ChunkedMappedMemoryWriter {
   virtual ~ChunkedMappedMemoryWriter() = default;
 
   static std::unique_ptr<ChunkedMappedMemoryWriter> Open(
-      const std::wstring& path, size_t chunk_size,
+      const std::u16string& path, size_t chunk_size,
       bool low_address_space = false);
 
   virtual uint8_t* Allocate(size_t length) = 0;
@@ -67,13 +67,13 @@ class ChunkedMappedMemoryWriter {
   virtual void FlushNew() = 0;
 
  protected:
-  ChunkedMappedMemoryWriter(const std::wstring& path, size_t chunk_size,
+  ChunkedMappedMemoryWriter(const std::u16string& path, size_t chunk_size,
                             bool low_address_space)
       : path_(path),
         chunk_size_(chunk_size),
         low_address_space_(low_address_space) {}
 
-  std::wstring path_;
+  std::u16string path_;
   size_t chunk_size_;
   bool low_address_space_;
 };

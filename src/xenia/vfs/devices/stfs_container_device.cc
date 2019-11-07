@@ -54,7 +54,7 @@ uint64_t decode_fat_timestamp(uint32_t date, uint32_t time) {
 }
 
 StfsContainerDevice::StfsContainerDevice(const std::string& mount_path,
-                                         const std::wstring& local_path)
+                                         const std::u16string& local_path)
     : Device(mount_path), local_path_(local_path) {}
 
 StfsContainerDevice::~StfsContainerDevice() = default;
@@ -118,7 +118,7 @@ StfsContainerDevice::Error StfsContainerDevice::MapFiles() {
 
   // If the STFS package is multi-file, it is an SVOD system. We need to map
   // the files in the .data folder and can discard the header.
-  auto data_fragment_path = local_path_ + L".data";
+  auto data_fragment_path = local_path_ + u".data";
   if (!filesystem::PathExists(data_fragment_path)) {
     XELOGE("STFS container is multi-file, but path %ls does not exist.",
            xe::to_string(data_fragment_path).c_str());
@@ -739,7 +739,7 @@ bool StfsHeader::Read(const uint8_t* p) {
   return true;
 }
 
-bool StfsContainerDevice::ResolveFromFolder(const std::wstring& path) {
+bool StfsContainerDevice::ResolveFromFolder(const std::u16string& path) {
   // Scan through folders until a file with magic is found
   std::queue<filesystem::FileInfo> queue;
 

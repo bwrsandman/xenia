@@ -26,7 +26,7 @@ class NullGraphicsSystem : public GraphicsSystem {
 
   static bool IsAvailable() { return true; }
 
-  std::wstring name() const override { return L"null"; }
+  std::u16string name() const override { return u"null"; }
 
   X_STATUS Setup(cpu::Processor* processor, kernel::KernelState* kernel_state,
                  ui::Window* target_window) override;

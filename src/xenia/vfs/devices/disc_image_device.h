@@ -24,7 +24,7 @@ class DiscImageEntry;
 class DiscImageDevice : public Device {
  public:
   DiscImageDevice(const std::string& mount_path,
-                  const std::wstring& local_path);
+                  const std::u16string& local_path);
   ~DiscImageDevice() override;
 
   bool Initialize() override;
@@ -48,7 +48,7 @@ class DiscImageDevice : public Device {
     kErrorDamagedFile = -31,
   };
 
-  std::wstring local_path_;
+  std::u16string local_path_;
   std::unique_ptr<Entry> root_entry_;
   std::unique_ptr<MappedMemory> mmap_;
 

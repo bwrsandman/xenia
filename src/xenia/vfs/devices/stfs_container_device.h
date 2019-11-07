@@ -166,7 +166,7 @@ class StfsHeader {
 class StfsContainerDevice : public Device {
  public:
   StfsContainerDevice(const std::string& mount_path,
-                      const std::wstring& local_path);
+                      const std::u16string& local_path);
   ~StfsContainerDevice() override;
 
   bool Initialize() override;
@@ -197,7 +197,7 @@ class StfsContainerDevice : public Device {
 
   const uint32_t kSTFSHashSpacing = 170;
 
-  bool ResolveFromFolder(const std::wstring& path);
+  bool ResolveFromFolder(const std::u16string& path);
 
   Error MapFiles();
   static Error ReadPackageType(const uint8_t* map_ptr, size_t map_size,
@@ -215,7 +215,7 @@ class StfsContainerDevice : public Device {
   BlockHash GetBlockHash(const uint8_t* map_ptr, uint32_t block_index,
                          uint32_t table_offset);
 
-  std::wstring local_path_;
+  std::u16string local_path_;
   std::map<size_t, std::unique_ptr<MappedMemory>> mmap_;
   size_t mmap_total_size_;
 

@@ -281,15 +281,15 @@ inline std::string load_and_swap<std::string>(const void* mem) {
   return value;
 }
 template <>
-inline std::wstring load_and_swap<std::wstring>(const void* mem) {
-  std::wstring value;
+inline std::u16string load_and_swap<std::u16string>(const void* mem) {
+  std::u16string value;
   for (int i = 0;; ++i) {
     auto c =
         xe::load_and_swap<uint16_t>(reinterpret_cast<const uint16_t*>(mem) + i);
     if (!c) {
       break;
     }
-    value.push_back(static_cast<wchar_t>(c));
+    value.push_back(static_cast<char16_t>(c));
   }
   return value;
 }
@@ -400,7 +400,7 @@ inline void store_and_swap<std::string>(void* mem, const std::string& value) {
   }
 }
 template <>
-inline void store_and_swap<std::wstring>(void* mem, const std::wstring& value) {
+inline void store_and_swap<std::u16string>(void* mem, const std::u16string& value) {
   for (auto i = 0; i < value.size(); ++i) {
     xe::store_and_swap<uint16_t>(reinterpret_cast<uint16_t*>(mem) + i,
                                  value[i]);

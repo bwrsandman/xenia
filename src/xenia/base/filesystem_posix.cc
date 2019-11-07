@@ -27,19 +27,19 @@
 namespace xe {
 namespace filesystem {
 
-std::wstring GetExecutablePath() {
+std::u16string GetExecutablePath() {
   char buff[FILENAME_MAX] = "";
   readlink("/proc/self/exe", buff, FILENAME_MAX);
   std::string s(buff);
-  return to_wstring(s);
+  return to_u16string(s);
 }
 
-std::wstring GetExecutableFolder() {
+std::u16string GetExecutableFolder() {
   auto path = GetExecutablePath();
   return xe::find_base_path(path);
 }
 
-std::wstring GetUserFolder() {
+std::u16string GetUserFolder() {
   // get preferred data home
   char* dataHome = std::getenv("XDG_DATA_HOME");
 
@@ -48,7 +48,7 @@ std::wstring GetUserFolder() {
     dataHome = std::getenv("HOME");
   } else {
     std::string home(dataHome);
-    return to_wstring(home);
+    return to_u16string(home);
   }
 
   // if HOME not set, fall back to this
@@ -62,20 +62,20 @@ std::wstring GetUserFolder() {
   }
 
   std::string home(dataHome);
-  return xe::join_paths(to_wstring(home), L".local/share");
+  return xe::join_paths(to_u16string(home), u".local/share");
 }
 
-bool PathExists(const std::wstring& path) {
+bool PathExists(const std::u16string& path) {
   struct stat st;
   return stat(xe::to_string(path).c_str(), &st) == 0;
 }
 
-FILE* OpenFile(const std::wstring& path, const char* mode) {
+FILE* OpenFile(const std::u16string& path, const char* mode) {
   auto fixed_path = xe::fix_path_separators(path);
   return fopen(xe::to_string(fixed_path).c_str(), mode);
 }
 
-bool CreateFolder(const std::wstring& path) {
+bool CreateFolder(const std::u16string& path) {
   return mkdir(xe::to_string(path).c_str(), 0774);
 }
 
@@ -85,7 +85,7 @@ static int removeCallback(const char* fpath, const struct stat* sb,
   return rv;
 }
 
-bool DeleteFolder(const std::wstring& path) {
+bool DeleteFolder(const std::u16string& path) {
   return nftw(xe::to_string(path).c_str(), removeCallback, 64,
               FTW_DEPTH | FTW_PHYS) == 0;
 }
@@ -100,7 +100,7 @@ static uint64_t convertUnixtimeToWinFiletime(const timespec& unixtime) {
   return filetime;
 }
 
-bool IsFolder(const std::wstring& path) {
+bool IsFolder(const std::u16string& path) {
   struct stat st;
   if (stat(xe::to_string(path).c_str(), &st) == 0) {
     if (S_ISDIR(st.st_mode)) return true;
@@ -108,7 +108,7 @@ bool IsFolder(const std::wstring& path) {
   return false;
 }
 
-bool CreateFile(const std::wstring& path) {
+bool CreateFile(const std::u16string& path) {
   int file = creat(xe::to_string(path).c_str(), 0774);
   if (file >= 0) {
     close(file);
@@ -117,13 +117,13 @@ bool CreateFile(const std::wstring& path) {
   return false;
 }
 
-bool DeleteFile(const std::wstring& path) {
+bool DeleteFile(const std::u16string& path) {
   return xe::to_string(path).c_str() == nullptr;
 }
 
 class PosixFileHandle : public FileHandle {
  public:
-  PosixFileHandle(std::wstring path, int handle)
+  PosixFileHandle(std::u16string path, int handle)
       : FileHandle(std::move(path)), handle_(handle) {}
   ~PosixFileHandle() override {
     close(handle_);
@@ -150,7 +150,7 @@ class PosixFileHandle : public FileHandle {
   int handle_ = -1;
 };
 
-std::unique_ptr<FileHandle> FileHandle::OpenExisting(std::wstring path,
+std::unique_ptr<FileHandle> FileHandle::OpenExisting(std::u16string path,
                                                      uint32_t desired_access) {
   int open_access = 0;
   if (desired_access & FileAccess::kGenericRead) {
@@ -182,7 +182,7 @@ std::unique_ptr<FileHandle> FileHandle::OpenExisting(std::wstring path,
   return std::make_unique<PosixFileHandle>(path, handle);
 }
 
-bool GetInfo(const std::wstring& path, FileInfo* out_info) {
+bool GetInfo(const std::u16string& path, FileInfo* out_info) {
   struct stat st;
   if (stat(xe::to_string(path).c_str(), &st) == 0) {
     if (S_ISDIR(st.st_mode)) {
@@ -203,7 +203,7 @@ bool GetInfo(const std::wstring& path, FileInfo* out_info) {
   return false;
 }
 
-std::vector<FileInfo> ListFiles(const std::wstring& path) {
+std::vector<FileInfo> ListFiles(const std::u16string& path) {
   std::vector<FileInfo> result;
 
   DIR* dir = opendir(xe::to_string(path).c_str());
@@ -219,7 +219,7 @@ std::vector<FileInfo> ListFiles(const std::wstring& path) {
 
     FileInfo info;
 
-    info.name = xe::to_wstring(ent->d_name);
+    info.name = xe::to_u16string(ent->d_name);
     struct stat st;
     auto full_path = xe::to_string(xe::join_paths(path, info.name));
     auto ret = stat(full_path.c_str(), &st);

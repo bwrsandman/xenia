@@ -253,7 +253,7 @@ class Processor {
   // Which debug features are enabled in generated code.
   uint32_t debug_info_flags_ = 0;
   // If specified, the file trace data gets written to when running.
-  std::wstring functions_trace_path_;
+  std::u16string functions_trace_path_;
   std::unique_ptr<ChunkedMappedMemoryWriter> functions_trace_file_;
 
   std::unique_ptr<ppc::PPCFrontend> frontend_;

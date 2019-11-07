@@ -38,7 +38,7 @@ using xe::ui::MenuItem;
 using xe::ui::MouseEvent;
 using xe::ui::UIEvent;
 
-const std::wstring kBaseTitle = L"xenia";
+const std::u16string kBaseTitle = u"xenia";
 
 EmulatorWindow::EmulatorWindow(Emulator* emulator)
     : emulator_(emulator),
@@ -47,14 +47,14 @@ EmulatorWindow::EmulatorWindow(Emulator* emulator)
   base_title_ = kBaseTitle +
 #ifdef DEBUG
 #if _NO_DEBUG_HEAP == 1
-                L" DEBUG" +
+                u" DEBUG" +
 #else
-                L" CHECKED" +
+                u" CHECKED" +
 #endif
 #endif
-                L" (" + xe::to_wstring(XE_BUILD_BRANCH) + L"/" +
-                xe::to_wstring(XE_BUILD_COMMIT_SHORT) + L"/" +
-                xe::to_wstring(XE_BUILD_DATE) + L")";
+                u" (" + xe::to_u16string(XE_BUILD_BRANCH) + u"/" +
+                xe::to_u16string(XE_BUILD_COMMIT_SHORT) + u"/" +
+                xe::to_u16string(XE_BUILD_DATE) + u")";
 }
 
 EmulatorWindow::~EmulatorWindow() {
@@ -123,13 +123,13 @@ bool EmulatorWindow::Initialize() {
         // Save to file
         // TODO: Choose path based on user input, or from options
         // TODO: Spawn a new thread to do this.
-        emulator()->SaveToFile(L"test.sav");
+        emulator()->SaveToFile(u"test.sav");
       } break;
       case 0x77: {  // VK_F8
         // Restore from file
         // TODO: Choose path from user
         // TODO: Spawn a new thread to do this.
-        emulator()->RestoreFromFile(L"test.sav");
+        emulator()->RestoreFromFile(u"test.sav");
       } break;
       case 0x7A: {  // VK_F11
         ToggleFullscreen();
@@ -176,109 +176,109 @@ bool EmulatorWindow::Initialize() {
   // Main menu.
   // FIXME: This code is really messy.
   auto main_menu = MenuItem::Create(MenuItem::Type::kNormal);
-  auto file_menu = MenuItem::Create(MenuItem::Type::kPopup, L"&File");
+  auto file_menu = MenuItem::Create(MenuItem::Type::kPopup, u"&File");
   {
     file_menu->AddChild(
-        MenuItem::Create(MenuItem::Type::kString, L"&Open...", L"Ctrl+O",
+        MenuItem::Create(MenuItem::Type::kString, u"&Open...", u"Ctrl+O",
                          std::bind(&EmulatorWindow::FileOpen, this)));
     file_menu->AddChild(
-        MenuItem::Create(MenuItem::Type::kString, L"Close",
+        MenuItem::Create(MenuItem::Type::kString, u"Close",
                          std::bind(&EmulatorWindow::FileClose, this)));
     file_menu->AddChild(MenuItem::Create(MenuItem::Type::kSeparator));
     file_menu->AddChild(MenuItem::Create(
-        MenuItem::Type::kString, L"Show content directory...",
+        MenuItem::Type::kString, u"Show content directory...",
         std::bind(&EmulatorWindow::ShowContentDirectory, this)));
     file_menu->AddChild(MenuItem::Create(MenuItem::Type::kSeparator));
-    file_menu->AddChild(MenuItem::Create(MenuItem::Type::kString, L"E&xit",
-                                         L"Alt+F4",
+    file_menu->AddChild(MenuItem::Create(MenuItem::Type::kString, u"E&xit",
+                                         u"Alt+F4",
                                          [this]() { window_->Close(); }));
   }
   main_menu->AddChild(std::move(file_menu));
 
   // CPU menu.
-  auto cpu_menu = MenuItem::Create(MenuItem::Type::kPopup, L"&CPU");
+  auto cpu_menu = MenuItem::Create(MenuItem::Type::kPopup, u"&CPU");
   {
     cpu_menu->AddChild(MenuItem::Create(
-        MenuItem::Type::kString, L"&Reset Time Scalar", L"Numpad *",
+        MenuItem::Type::kString, u"&Reset Time Scalar", u"Numpad *",
         std::bind(&EmulatorWindow::CpuTimeScalarReset, this)));
     cpu_menu->AddChild(MenuItem::Create(
-        MenuItem::Type::kString, L"Time Scalar /= 2", L"Numpad -",
+        MenuItem::Type::kString, u"Time Scalar /= 2", u"Numpad -",
         std::bind(&EmulatorWindow::CpuTimeScalarSetHalf, this)));
     cpu_menu->AddChild(MenuItem::Create(
-        MenuItem::Type::kString, L"Time Scalar *= 2", L"Numpad +",
+        MenuItem::Type::kString, u"Time Scalar *= 2", u"Numpad +",
         std::bind(&EmulatorWindow::CpuTimeScalarSetDouble, this)));
   }
   cpu_menu->AddChild(MenuItem::Create(MenuItem::Type::kSeparator));
   {
     cpu_menu->AddChild(MenuItem::Create(MenuItem::Type::kString,
-                                        L"Toggle Profiler &Display", L"F3",
+                                        u"Toggle Profiler &Display", u"F3",
                                         []() { Profiler::ToggleDisplay(); }));
     cpu_menu->AddChild(MenuItem::Create(MenuItem::Type::kString,
-                                        L"&Pause/Resume Profiler", L"`",
+                                        u"&Pause/Resume Profiler", u"`",
                                         []() { Profiler::TogglePause(); }));
   }
   cpu_menu->AddChild(MenuItem::Create(MenuItem::Type::kSeparator));
   {
     cpu_menu->AddChild(MenuItem::Create(
-        MenuItem::Type::kString, L"&Break and Show Guest Debugger",
-        L"Pause/Break",
+        MenuItem::Type::kString, u"&Break and Show Guest Debugger",
+        u"Pause/Break",
         std::bind(&EmulatorWindow::CpuBreakIntoDebugger, this)));
     cpu_menu->AddChild(MenuItem::Create(
-        MenuItem::Type::kString, L"&Break into Host Debugger",
-        L"Ctrl+Pause/Break",
+        MenuItem::Type::kString, u"&Break into Host Debugger",
+        u"Ctrl+Pause/Break",
         std::bind(&EmulatorWindow::CpuBreakIntoHostDebugger, this)));
   }
   main_menu->AddChild(std::move(cpu_menu));
 
   // GPU menu.
-  auto gpu_menu = MenuItem::Create(MenuItem::Type::kPopup, L"&GPU");
+  auto gpu_menu = MenuItem::Create(MenuItem::Type::kPopup, u"&GPU");
   {
     gpu_menu->AddChild(
-        MenuItem::Create(MenuItem::Type::kString, L"&Trace Frame", L"F4",
+        MenuItem::Create(MenuItem::Type::kString, u"&Trace Frame", u"F4",
                          std::bind(&EmulatorWindow::GpuTraceFrame, this)));
   }
   gpu_menu->AddChild(MenuItem::Create(MenuItem::Type::kSeparator));
   {
     gpu_menu->AddChild(
-        MenuItem::Create(MenuItem::Type::kString, L"&Clear Caches", L"F5",
+        MenuItem::Create(MenuItem::Type::kString, u"&Clear Caches", u"F5",
                          std::bind(&EmulatorWindow::GpuClearCaches, this)));
   }
   main_menu->AddChild(std::move(gpu_menu));
 
   // Window menu.
-  auto window_menu = MenuItem::Create(MenuItem::Type::kPopup, L"&Window");
+  auto window_menu = MenuItem::Create(MenuItem::Type::kPopup, u"&Window");
   {
     window_menu->AddChild(
-        MenuItem::Create(MenuItem::Type::kString, L"&Fullscreen", L"F11",
+        MenuItem::Create(MenuItem::Type::kString, u"&Fullscreen", u"F11",
                          std::bind(&EmulatorWindow::ToggleFullscreen, this)));
   }
   main_menu->AddChild(std::move(window_menu));
 
   // Help menu.
-  auto help_menu = MenuItem::Create(MenuItem::Type::kPopup, L"&Help");
+  auto help_menu = MenuItem::Create(MenuItem::Type::kPopup, u"&Help");
   {
     help_menu->AddChild(MenuItem::Create(
-        MenuItem::Type::kString, L"Build commit on GitHub...", [this]() {
-          std::wstring url =
-              std::wstring(L"https://github.com/xenia-project/xenia/tree/") +
-              xe::to_wstring(XE_BUILD_COMMIT) + L"/";
+        MenuItem::Type::kString, u"Build commit on GitHub...", [this]() {
+          std::u16string url =
+              std::u16string(u"https://github.com/xenia-project/xenia/tree/") +
+              xe::to_u16string(XE_BUILD_COMMIT) + u"/";
           LaunchBrowser(url.c_str());
         }));
     help_menu->AddChild(MenuItem::Create(
-        MenuItem::Type::kString, L"Recent changes on GitHub...", [this]() {
-          std::wstring url =
-              std::wstring(L"https://github.com/xenia-project/xenia/compare/") +
-              xe::to_wstring(XE_BUILD_COMMIT) + L"..." +
-              xe::to_wstring(XE_BUILD_BRANCH);
+        MenuItem::Type::kString, u"Recent changes on GitHub...", [this]() {
+          std::u16string url =
+              std::u16string(u"https://github.com/xenia-project/xenia/compare/") +
+              xe::to_u16string(XE_BUILD_COMMIT) + u"..." +
+              xe::to_u16string(XE_BUILD_BRANCH);
           LaunchBrowser(url.c_str());
         }));
     help_menu->AddChild(MenuItem::Create(MenuItem::Type::kSeparator));
     help_menu->AddChild(
-        MenuItem::Create(MenuItem::Type::kString, L"&Website...", L"F1",
+        MenuItem::Create(MenuItem::Type::kString, u"&Website...", u"F1",
                          std::bind(&EmulatorWindow::ShowHelpWebsite, this)));
     help_menu->AddChild(MenuItem::Create(
-        MenuItem::Type::kString, L"&About...",
-        [this]() { LaunchBrowser(L"https://xenia.jp/about/"); }));
+        MenuItem::Type::kString, u"&About...",
+        [this]() { LaunchBrowser(u"https://xenia.jp/about/"); }));
   }
   main_menu->AddChild(std::move(help_menu));
 
@@ -291,8 +291,8 @@ bool EmulatorWindow::Initialize() {
   return true;
 }
 
-void EmulatorWindow::FileDrop(wchar_t* filename) {
-  std::wstring path = filename;
+void EmulatorWindow::FileDrop(char16_t* filename) {
+  std::u16string path = filename;
   auto result = emulator_->LaunchPath(path);
   if (XFAILED(result)) {
     // TODO: Display a message box.
@@ -301,19 +301,19 @@ void EmulatorWindow::FileDrop(wchar_t* filename) {
 }
 
 void EmulatorWindow::FileOpen() {
-  std::wstring path;
+  std::u16string path;
 
   auto file_picker = xe::ui::FilePicker::Create();
   file_picker->set_mode(ui::FilePicker::Mode::kOpen);
   file_picker->set_type(ui::FilePicker::Type::kFile);
   file_picker->set_multi_selection(false);
-  file_picker->set_title(L"Select Content Package");
+  file_picker->set_title(u"Select Content Package");
   file_picker->set_extensions({
-      {L"Supported Files", L"*.iso;*.xex;*.xcp;*.*"},
-      {L"Disc Image (*.iso)", L"*.iso"},
-      {L"Xbox Executable (*.xex)", L"*.xex"},
-      //{ L"Content Package (*.xcp)", L"*.xcp" },
-      {L"All Files (*.*)", L"*.*"},
+      {u"Supported Files", u"*.iso;*.xex;*.xcp;*.*"},
+      {u"Disc Image (*.iso)", u"*.iso"},
+      {u"Xbox Executable (*.xex)", u"*.xex"},
+      //{ u"Content Package (*.xcp)", u"*.xcp" },
+      {u"All Files (*.*)", u"*.*"},
   });
   if (file_picker->Show(window_->native_handle())) {
     auto selected_files = file_picker->selected_files();
@@ -324,7 +324,7 @@ void EmulatorWindow::FileOpen() {
 
   if (!path.empty()) {
     // Normalize the path and make absolute.
-    std::wstring abs_path = xe::to_absolute_path(path);
+    std::u16string abs_path = xe::to_absolute_path(path);
 
     auto result = emulator_->LaunchPath(abs_path);
     if (XFAILED(result)) {
@@ -341,16 +341,16 @@ void EmulatorWindow::FileClose() {
 }
 
 void EmulatorWindow::ShowContentDirectory() {
-  std::wstring target_path;
+  std::u16string target_path;
 
   auto content_root = emulator_->content_root();
   if (!emulator_->is_title_open() || !emulator_->kernel_state()) {
     target_path = content_root;
   } else {
     // TODO(gibbed): expose this via ContentManager?
-    wchar_t title_id[9] = L"00000000";
-    std::swprintf(title_id, 9, L"%.8X", emulator_->kernel_state()->title_id());
-    auto package_root = xe::join_paths(content_root, title_id);
+    char title_id[9] = "00000000";
+    std::snprintf(title_id, 9, "%.8X", emulator_->kernel_state()->title_id());
+    auto package_root = xe::join_paths(content_root, xe::to_u16string(title_id));
     target_path = package_root;
   }
 
@@ -425,25 +425,25 @@ void EmulatorWindow::ToggleFullscreen() {
   }
 }
 
-void EmulatorWindow::ShowHelpWebsite() { LaunchBrowser(L"https://xenia.jp"); }
+void EmulatorWindow::ShowHelpWebsite() { LaunchBrowser(u"https://xenia.jp"); }
 
 void EmulatorWindow::UpdateTitle() {
-  std::wstring title(base_title_);
+  std::u16string title(base_title_);
 
   if (emulator()->is_title_open()) {
     auto game_title = emulator()->game_title();
-    title += xe::format_string(L" | [%.8X] %ls", emulator()->title_id(),
+    title += xe::format_string(u" | [%.8X] %ls", emulator()->title_id(),
                                game_title.c_str());
   }
 
   auto graphics_system = emulator()->graphics_system();
   if (graphics_system) {
     auto graphics_name = graphics_system->name();
-    title += L" <" + graphics_name + L">";
+    title += u" <" + graphics_name + u">";
   }
 
   if (Clock::guest_time_scalar() != 1.0) {
-    title += xe::format_string(L" (@%.2fx)", Clock::guest_time_scalar());
+    title += xe::format_string(u" (@%.2fx)", Clock::guest_time_scalar());
   }
 
   window_->set_title(title);

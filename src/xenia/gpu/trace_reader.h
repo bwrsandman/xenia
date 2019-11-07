@@ -129,7 +129,7 @@ class TraceReader {
   const Frame* frame(int n) const { return &frames_[n]; }
   int frame_count() const { return int(frames_.size()); }
 
-  bool Open(const std::wstring& path);
+  bool Open(const std::u16string& path);
 
   void Close();
 

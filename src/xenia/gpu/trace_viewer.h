@@ -36,7 +36,7 @@ class TraceViewer {
  public:
   virtual ~TraceViewer();
 
-  int Main(const std::vector<std::wstring>& args);
+  int Main(const std::vector<std::u16string>& args);
 
  protected:
   TraceViewer();
@@ -74,7 +74,7 @@ class TraceViewer {
     kHostDisasm,
   };
 
-  bool Load(std::wstring trace_file_path);
+  bool Load(std::u16string trace_file_path);
   void Run();
 
   void DrawUI();

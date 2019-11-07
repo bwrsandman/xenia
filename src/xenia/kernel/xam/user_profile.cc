@@ -130,7 +130,7 @@ void UserProfile::LoadSetting(UserProfile::Setting* setting) {
   if (setting->is_title_specific()) {
     auto content_dir =
         kernel_state()->content_manager()->ResolveGameUserContentPath();
-    auto setting_id = xe::format_string(L"%.8X", setting->setting_id);
+    auto setting_id = xe::format_string(u"%.8X", setting->setting_id);
     auto file_path = xe::join_paths(content_dir, setting_id);
     auto file = xe::filesystem::OpenFile(file_path, "rb");
     if (file) {
@@ -157,7 +157,7 @@ void UserProfile::SaveSetting(UserProfile::Setting* setting) {
     auto content_dir =
         kernel_state()->content_manager()->ResolveGameUserContentPath();
     xe::filesystem::CreateFolder(content_dir);
-    auto setting_id = xe::format_string(L"%.8X", setting->setting_id);
+    auto setting_id = xe::format_string(u"%.8X", setting->setting_id);
     auto file_path = xe::join_paths(content_dir, setting_id);
     auto file = xe::filesystem::OpenFile(file_path, "wb");
     fwrite(serialized_setting.data(), 1, serialized_setting.size(), file);

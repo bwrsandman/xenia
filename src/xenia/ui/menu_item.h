@@ -34,19 +34,19 @@ class MenuItem {
   };
 
   static std::unique_ptr<MenuItem> Create(Type type);
-  static std::unique_ptr<MenuItem> Create(Type type, const std::wstring& text);
-  static std::unique_ptr<MenuItem> Create(Type type, const std::wstring& text,
+  static std::unique_ptr<MenuItem> Create(Type type, const std::u16string& text);
+  static std::unique_ptr<MenuItem> Create(Type type, const std::u16string& text,
                                           std::function<void()> callback);
-  static std::unique_ptr<MenuItem> Create(Type type, const std::wstring& text,
-                                          const std::wstring& hotkey,
+  static std::unique_ptr<MenuItem> Create(Type type, const std::u16string& text,
+                                          const std::u16string& hotkey,
                                           std::function<void()> callback);
 
   virtual ~MenuItem();
 
   MenuItem* parent_item() const { return parent_item_; }
   Type type() { return type_; }
-  const std::wstring& text() { return text_; }
-  const std::wstring& hotkey() { return hotkey_; }
+  const std::u16string& text() { return text_; }
+  const std::u16string& hotkey() { return hotkey_; }
 
   void AddChild(MenuItem* child_item);
   void AddChild(std::unique_ptr<MenuItem> child_item);
@@ -58,7 +58,7 @@ class MenuItem {
   virtual void DisableMenuItem(Window& window) = 0;
 
  protected:
-  MenuItem(Type type, const std::wstring& text, const std::wstring& hotkey,
+  MenuItem(Type type, const std::u16string& text, const std::u16string& hotkey,
            std::function<void()> callback);
 
   virtual void OnChildAdded(MenuItem* child_item) {}
@@ -69,8 +69,8 @@ class MenuItem {
   Type type_;
   MenuItem* parent_item_;
   std::vector<MenuItemPtr> children_;
-  std::wstring text_;
-  std::wstring hotkey_;
+  std::u16string text_;
+  std::u16string hotkey_;
   std::function<void()> callback_;
 };
 

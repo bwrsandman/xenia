@@ -37,6 +37,15 @@
 
 namespace xe {
 
+std::string to_string(const std::u16string& source) {
+#if NO_CODECVT
+  return std::string(source.begin(), source.end());
+#else
+  static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> converter;
+  return converter.to_bytes(source);
+#endif  // XE_PLATFORM_LINUX
+}
+
 std::string to_string(const std::wstring& source) {
 #if NO_CODECVT
   return std::string(source.begin(), source.end());
@@ -51,6 +60,15 @@ std::wstring to_wstring(const std::string& source) {
   return std::wstring(source.begin(), source.end());
 #else
   static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+  return converter.from_bytes(source);
+#endif  // XE_PLATFORM_LINUX
+}
+
+std::u16string to_u16string(const std::string& source) {
+#if NO_CODECVT
+  return std::u16string(source.begin(), source.end());
+#else
+  static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> converter;
   return converter.from_bytes(source);
 #endif  // XE_PLATFORM_LINUX
 }
@@ -78,6 +96,32 @@ std::string format_string(const char* format, va_list args) {
       return new_s;
     }
   }
+}
+
+template <>
+std::u16string format_string(const char16_t* format, va_list args) {
+	if (!format) {
+		return u"";
+	}
+	size_t max_len = 64;
+	std::string new_s;
+	while (true) {
+		new_s.resize(max_len);
+
+		auto sformat = xe::to_string(std::u16string(format)).c_str();
+		int ret = std::vsnprintf(const_cast<char*>(new_s.data()), max_len, sformat, args);
+		if (ret > max_len) {
+			// Needed size is known (+2 for termination and avoid ambiguity).
+			max_len = ret + 2;
+		} else if (ret == -1 || ret >= max_len - 1) {
+			// Handle some buggy vsnprintf implementations.
+			max_len *= 2;
+		} else {
+			// Everything fit for sure.
+			new_s.resize(ret);
+			return xe::to_u16string(new_s);
+		}
+	}
 }
 
 template <>
@@ -165,6 +209,17 @@ std::string to_absolute_path(const std::string& path) {
   char buffer[kMaxPath];
   realpath(path.c_str(), buffer);
   return buffer;
+#endif  // XE_PLATFORM_WIN32
+}
+
+template <>
+std::u16string to_absolute_path(const std::u16string& path) {
+#if XE_PLATFORM_WIN32
+  wchar_t buffer[kMaxPath];
+  _wfullpath(buffer, path.c_str(), sizeof(buffer) / sizeof(wchar_t));
+  return buffer;
+#else
+  return xe::to_u16string(to_absolute_path(xe::to_string(path)));
 #endif  // XE_PLATFORM_WIN32
 }
 

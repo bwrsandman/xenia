@@ -38,7 +38,7 @@ VulkanCommandProcessor::VulkanCommandProcessor(
 
 VulkanCommandProcessor::~VulkanCommandProcessor() = default;
 
-void VulkanCommandProcessor::RequestFrameTrace(const std::wstring& root_path) {
+void VulkanCommandProcessor::RequestFrameTrace(const std::u16string& root_path) {
   // Override traces if renderdoc is attached.
   if (device_->is_renderdoc_attached()) {
     trace_requested_ = true;

@@ -21,46 +21,46 @@ namespace xe {
 namespace filesystem {
 
 // Get executable path.
-std::wstring GetExecutablePath();
+std::u16string GetExecutablePath();
 
 // Get executable folder.
-std::wstring GetExecutableFolder();
+std::u16string GetExecutableFolder();
 
 // Get user folder.
-std::wstring GetUserFolder();
+std::u16string GetUserFolder();
 
 // Canonicalizes a path, removing ..'s.
 std::string CanonicalizePath(const std::string& original_path);
 
 // Returns true of the specified path exists as either a directory or file.
-bool PathExists(const std::wstring& path);
+bool PathExists(const std::u16string& path);
 
 // Creates the parent folder of the specified path if needed.
 // This can be used to ensure the destination path for a new file exists before
 // attempting to create it.
-bool CreateParentFolder(const std::wstring& path);
+bool CreateParentFolder(const std::u16string& path);
 
 // Creates a folder at the specified path.
 // Returns true if the path was created.
-bool CreateFolder(const std::wstring& path);
+bool CreateFolder(const std::u16string& path);
 
 // Recursively deletes the files and folders at the specified path.
 // Returns true if the path was found and removed.
-bool DeleteFolder(const std::wstring& path);
+bool DeleteFolder(const std::u16string& path);
 
 // Returns true if the given path exists and is a folder.
-bool IsFolder(const std::wstring& path);
+bool IsFolder(const std::u16string& path);
 
 // Creates an empty file at the given path.
-bool CreateFile(const std::wstring& path);
+bool CreateFile(const std::u16string& path);
 
 // Opens the file at the given path with the specified mode.
 // This behaves like fopen and the returned handle can be used with stdio.
-FILE* OpenFile(const std::wstring& path, const char* mode);
+FILE* OpenFile(const std::u16string& path, const char* mode);
 
 // Deletes the file at the given path.
 // Returns true if the file was found and removed.
-bool DeleteFile(const std::wstring& path);
+bool DeleteFile(const std::u16string& path);
 
 struct FileAccess {
   // Implies kFileReadData.
@@ -78,12 +78,12 @@ class FileHandle {
  public:
   // Opens the file, failing if it doesn't exist.
   // The desired_access bitmask denotes the permissions on the file.
-  static std::unique_ptr<FileHandle> OpenExisting(std::wstring path,
+  static std::unique_ptr<FileHandle> OpenExisting(std::u16string path,
                                                   uint32_t desired_access);
 
   virtual ~FileHandle() = default;
 
-  std::wstring path() const { return path_; }
+  std::u16string path() const { return path_; }
 
   // Reads the requested number of bytes from the file starting at the given
   // offset. The total number of bytes read is returned only if the complete
@@ -104,9 +104,9 @@ class FileHandle {
   virtual void Flush() = 0;
 
  protected:
-  explicit FileHandle(std::wstring path) : path_(std::move(path)) {}
+  explicit FileHandle(std::u16string path) : path_(std::move(path)) {}
 
-  std::wstring path_;
+  std::u16string path_;
 };
 
 struct FileInfo {
@@ -115,15 +115,15 @@ struct FileInfo {
     kDirectory,
   };
   Type type;
-  std::wstring name;
-  std::wstring path;
+  std::u16string name;
+  std::u16string path;
   size_t total_size;
   uint64_t create_timestamp;
   uint64_t access_timestamp;
   uint64_t write_timestamp;
 };
-bool GetInfo(const std::wstring& path, FileInfo* out_info);
-std::vector<FileInfo> ListFiles(const std::wstring& path);
+bool GetInfo(const std::u16string& path, FileInfo* out_info);
+std::vector<FileInfo> ListFiles(const std::u16string& path);
 
 }  // namespace filesystem
 }  // namespace xe

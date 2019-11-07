@@ -140,7 +140,7 @@ bool Processor::Setup(std::unique_ptr<backend::Backend> backend) {
   }
 
   // Open the trace data path, if requested.
-  functions_trace_path_ = xe::to_wstring(cvars::trace_function_data_path);
+  functions_trace_path_ = xe::to_u16string(cvars::trace_function_data_path);
   if (!functions_trace_path_.empty()) {
     functions_trace_file_ = ChunkedMappedMemoryWriter::Open(
         functions_trace_path_, 32 * 1024 * 1024, true);

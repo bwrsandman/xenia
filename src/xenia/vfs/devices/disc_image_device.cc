@@ -19,7 +19,7 @@ namespace vfs {
 const size_t kXESectorSize = 2048;
 
 DiscImageDevice::DiscImageDevice(const std::string& mount_path,
-                                 const std::wstring& local_path)
+                                 const std::u16string& local_path)
     : Device(mount_path), local_path_(local_path) {}
 
 DiscImageDevice::~DiscImageDevice() = default;

@@ -47,18 +47,18 @@ namespace xe {
 // This is responsible for initializing and managing all the various subsystems.
 class Emulator {
  public:
-  explicit Emulator(const std::wstring& command_line,
-                    const std::wstring& content_root);
+  explicit Emulator(const std::u16string& command_line,
+                    const std::u16string& content_root);
   ~Emulator();
 
   // Full command line used when launching the process.
-  const std::wstring& command_line() const { return command_line_; }
+  const std::u16string& command_line() const { return command_line_; }
 
   // Folder content is stored in.
-  const std::wstring& content_root() const { return content_root_; }
+  const std::u16string& content_root() const { return content_root_; }
 
   // Title of the game in the default language.
-  const std::wstring& game_title() const { return game_title_; }
+  const std::u16string& game_title() const { return game_title_; }
 
   // Currently running title ID
   uint32_t title_id() const { return title_id_; }
@@ -119,24 +119,24 @@ class Emulator {
   // Launches a game from the given file path.
   // This will attempt to infer the type of the given file (such as an iso, etc)
   // using heuristics.
-  X_STATUS LaunchPath(std::wstring path);
+  X_STATUS LaunchPath(std::u16string path);
 
   // Launches a game from a .xex file by mounting the containing folder as if it
   // was an extracted STFS container.
-  X_STATUS LaunchXexFile(std::wstring path);
+  X_STATUS LaunchXexFile(std::u16string path);
 
   // Launches a game from a disc image file (.iso, etc).
-  X_STATUS LaunchDiscImage(std::wstring path);
+  X_STATUS LaunchDiscImage(std::u16string path);
 
   // Launches a game from an STFS container file.
-  X_STATUS LaunchStfsContainer(std::wstring path);
+  X_STATUS LaunchStfsContainer(std::u16string path);
 
   void Pause();
   void Resume();
   bool is_paused() const { return paused_; }
 
-  bool SaveToFile(const std::wstring& path);
-  bool RestoreFromFile(const std::wstring& path);
+  bool SaveToFile(const std::u16string& path);
+  bool RestoreFromFile(const std::u16string& path);
 
   // The game can request another title to be loaded.
   bool TitleRequested();
@@ -145,7 +145,7 @@ class Emulator {
   void WaitUntilExit();
 
  public:
-  xe::Delegate<uint32_t, const std::wstring&> on_launch;
+  xe::Delegate<uint32_t, const std::u16string&> on_launch;
   xe::Delegate<> on_terminate;
   xe::Delegate<> on_exit;
 
@@ -155,13 +155,13 @@ class Emulator {
 
   std::string FindLaunchModule();
 
-  X_STATUS CompleteLaunch(const std::wstring& path,
+  X_STATUS CompleteLaunch(const std::u16string& path,
                           const std::string& module_path);
 
-  std::wstring command_line_;
-  std::wstring content_root_;
+  std::u16string command_line_;
+  std::u16string content_root_;
 
-  std::wstring game_title_;
+  std::u16string game_title_;
 
   ui::Window* display_window_;
 

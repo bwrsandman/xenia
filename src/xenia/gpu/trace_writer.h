@@ -26,7 +26,7 @@ class TraceWriter {
 
   bool is_open() const { return file_ != nullptr; }
 
-  bool Open(const std::wstring& path, uint32_t title_id);
+  bool Open(const std::u16string& path, uint32_t title_id);
   void Flush();
   void Close();
 

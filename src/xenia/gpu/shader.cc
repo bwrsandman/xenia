@@ -43,7 +43,7 @@ std::string Shader::GetTranslatedBinaryString() const {
 std::pair<std::string, std::string> Shader::Dump(const std::string& base_path,
                                                  const char* path_prefix) {
   // Ensure target path exists.
-  auto target_path = xe::to_wstring(base_path);
+  auto target_path = xe::to_u16string(base_path);
   if (!target_path.empty()) {
     target_path = xe::to_absolute_path(target_path);
     xe::filesystem::CreateFolder(target_path);

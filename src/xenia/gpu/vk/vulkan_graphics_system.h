@@ -27,7 +27,7 @@ class VulkanGraphicsSystem : public GraphicsSystem {
 
   static bool IsAvailable() { return true; }
 
-  std::wstring name() const override;
+  std::u16string name() const override;
 
   X_STATUS Setup(cpu::Processor* processor, kernel::KernelState* kernel_state,
                  ui::Window* target_window) override;

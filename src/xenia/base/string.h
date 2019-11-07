@@ -20,8 +20,11 @@
 
 namespace xe {
 
+std::string to_string(const std::u16string& source);
 std::string to_string(const std::wstring& source);
+std::wstring to_wstring(const std::u16string& source);
 std::wstring to_wstring(const std::string& source);
+std::u16string to_u16string(const std::string& source);
 
 template <typename T>
 std::basic_string<T> format_string(const T* format, va_list args);
