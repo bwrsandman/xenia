@@ -35,6 +35,7 @@ project("xenia-app")
     "xenia-gpu-vulkan",
     "xenia-hid",
     "xenia-hid-nop",
+    "xenia-hid-sdlpad",
     "xenia-kernel",
     "xenia-ui",
     "xenia-ui-spirv",
@@ -90,6 +91,11 @@ project("xenia-app")
       linkoptions({
         "/DELAYLOAD:SDL2.dll",  -- SDL is not mandatory since on windows, XAudio2 is available for sound
       })
+
+  filter("platforms:Windows")
+    linkoptions({
+      "/DELAYLOAD:SDL2.dll",  -- SDL is not mandatory since on windows, XInput is the preferred input method
+    })
 
   filter("platforms:Windows")
     -- Only create the .user file if it doesn't already exist.

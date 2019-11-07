@@ -22,12 +22,14 @@
 
 // Available input drivers:
 #include "xenia/hid/nop/nop_hid.h"
+#include "xenia/hid/sdlpad/sdlpad_hid.h"
 #if XE_PLATFORM_WIN32
 #include "xenia/hid/winkey/winkey_hid.h"
 #include "xenia/hid/xinput/xinput_hid.h"
 #endif  // XE_PLATFORM_WIN32
 
-DEFINE_string(hid, "any", "Input system. Use: [any, nop, winkey, xinput]",
+DEFINE_string(hid, "any",
+              "Input system. Use: [any, nop, sdlpad, winkey, xinput]",
               "General");
 
 namespace xe {
@@ -40,6 +42,11 @@ std::vector<std::unique_ptr<hid::InputDriver>> CreateInputDrivers(
   std::vector<std::unique_ptr<hid::InputDriver>> drivers;
   if (cvars::hid.compare("nop") == 0) {
     drivers.emplace_back(xe::hid::nop::Create(window));
+  } else if (cvars::hid.compare("sdlpad") == 0) {
+    auto driver = xe::hid::sdlpad::Create(window);
+    if (XSUCCEEDED(driver->Setup())) {
+      drivers.emplace_back(std::move(driver));
+    }
 #if XE_PLATFORM_WIN32
   } else if (cvars::hid.compare("winkey") == 0) {
     drivers.emplace_back(xe::hid::winkey::Create(window));
@@ -47,6 +54,10 @@ std::vector<std::unique_ptr<hid::InputDriver>> CreateInputDrivers(
     drivers.emplace_back(xe::hid::xinput::Create(window));
 #endif  // XE_PLATFORM_WIN32
   } else {
+    auto sdlpad_driver = xe::hid::sdlpad::Create(window);
+    if (sdlpad_driver && XSUCCEEDED(sdlpad_driver->Setup())) {
+      drivers.emplace_back(std::move(sdlpad_driver));
+    }
 #if XE_PLATFORM_WIN32
     auto xinput_driver = xe::hid::xinput::Create(window);
     if (xinput_driver) {
