@@ -7,8 +7,7 @@
  ******************************************************************************
  */
 
-#include "xenia/base/platform_linux.h"
-#include <stdlib.h>
+#include <cstdlib>
 #include <string>
 #include "xenia/base/string.h"
 

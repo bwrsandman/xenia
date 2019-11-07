@@ -55,6 +55,7 @@ std::wstring to_wstring(const std::string& source) {
 #endif  // XE_PLATFORM_LINUX
 }
 
+template <>
 std::string format_string(const char* format, va_list args) {
   if (!format) {
     return "";
@@ -79,6 +80,7 @@ std::string format_string(const char* format, va_list args) {
   }
 }
 
+template <>
 std::wstring format_string(const wchar_t* format, va_list args) {
   if (!format) {
     return L"";
@@ -153,24 +155,28 @@ std::string::size_type find_first_of_case(const std::string& target,
   }
 }
 
+template <>
+std::string to_absolute_path(const std::string& path) {
+#if XE_PLATFORM_WIN32
+  char buffer[kMaxPath];
+  _fullpath(buffer, path.c_str(), sizeof(buffer) / sizeof(char));
+  return buffer;
+#else
+  char buffer[kMaxPath];
+  realpath(path.c_str(), buffer);
+  return buffer;
+#endif  // XE_PLATFORM_WIN32
+}
+
+template <>
 std::wstring to_absolute_path(const std::wstring& path) {
 #if XE_PLATFORM_WIN32
   wchar_t buffer[kMaxPath];
   _wfullpath(buffer, path.c_str(), sizeof(buffer) / sizeof(wchar_t));
   return buffer;
 #else
-  char buffer[kMaxPath];
-  realpath(xe::to_string(path).c_str(), buffer);
-  return xe::to_wstring(buffer);
+  return xe::to_wstring(to_absolute_path(xe::to_string(path)));
 #endif  // XE_PLATFORM_WIN32
-}
-
-std::vector<std::string> split_path(const std::string& path) {
-  return split_string(path, "\\/");
-}
-
-std::vector<std::wstring> split_path(const std::wstring& path) {
-  return split_string(path, L"\\/");
 }
 
 std::string join_paths(const std::string& left, const std::string& right,

@@ -15,7 +15,7 @@ namespace xe {
 namespace filesystem {
 
 std::string CanonicalizePath(const std::string& original_path) {
-  char path_sep(xe::kPathSeparator);
+  auto path_sep = '\\';
   std::string path(xe::fix_path_separators(original_path, path_sep));
 
   std::vector<std::string::size_type> path_breaks;
@@ -82,7 +82,7 @@ std::string CanonicalizePath(const std::string& original_path) {
     pos = pos_n;
   }
 
-  // Remove trailing seperator.
+  // Remove trailing separator.
   if (!path.empty() && path.back() == path_sep) {
     path.erase(path.size() - 1);
   }
@@ -97,8 +97,8 @@ std::string CanonicalizePath(const std::string& original_path) {
 }
 
 bool CreateParentFolder(const std::wstring& path) {
-  auto fixed_path = xe::fix_path_separators(path, xe::kWPathSeparator);
-  auto base_path = xe::find_base_path(fixed_path, xe::kWPathSeparator);
+  auto fixed_path = xe::fix_path_separators(path);
+  auto base_path = xe::find_base_path(fixed_path);
   if (!base_path.empty() && !PathExists(base_path)) {
     return CreateFolder(base_path);
   } else {

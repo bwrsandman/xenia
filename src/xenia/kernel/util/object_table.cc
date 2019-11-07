@@ -21,6 +21,23 @@ namespace xe {
 namespace kernel {
 namespace util {
 
+namespace {
+#if defined(XE_PLATFORM_LINUX)
+#include <cxxabi.h>
+#include <memory>
+std::string demangle(const char* mangled_name) {
+  std::size_t len = 0;
+  int status = 0;
+  std::unique_ptr<char, decltype(&std::free)> ptr(
+      __cxxabiv1::__cxa_demangle(mangled_name, nullptr, &len, &status),
+      &std::free);
+  return ptr ? std::string("class ") + ptr.get() : "";
+}
+#else
+std::string demangle(const char* name) { return name; }
+#endif
+}  // namespace
+
 ObjectTable::ObjectTable() {}
 
 ObjectTable::~ObjectTable() { Reset(); }
@@ -119,7 +136,8 @@ X_STATUS ObjectTable::AddHandle(XObject* object, X_HANDLE* out_handle) {
       // Retain so long as the object is in the table.
       object->Retain();
 
-      XELOGI("Added handle:%08X for %s", handle, typeid(*object).name());
+      XELOGI("Added handle:%08X for %s", handle,
+             demangle(typeid(*object).name()).c_str());
     }
   }
 
@@ -203,7 +221,8 @@ X_STATUS ObjectTable::RemoveHandle(X_HANDLE handle) {
       object->handles().erase(handle_entry);
     }
 
-    XELOGI("Removed handle:%08X for %s", handle, typeid(*object).name());
+    XELOGI("Removed handle:%08X for %s", handle,
+           demangle(typeid(*object).name()).c_str());
 
     // Release now that the object has been removed from the table.
     object->Release();

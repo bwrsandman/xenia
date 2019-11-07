@@ -47,7 +47,7 @@ bool PathExists(const std::wstring& path) {
 bool CreateFolder(const std::wstring& path) {
   size_t pos = 0;
   do {
-    pos = path.find_first_of(xe::kWPathSeparator, pos + 1);
+    pos = path.find_first_of(xe::kPathSeparator<wchar_t>, pos + 1);
     CreateDirectoryW(path.substr(0, pos).c_str(), nullptr);
   } while (pos != std::string::npos);
   return PathExists(path);

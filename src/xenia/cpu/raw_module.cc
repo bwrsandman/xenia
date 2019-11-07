@@ -48,7 +48,7 @@ bool RawModule::LoadFile(uint32_t base_address, const std::wstring& path) {
   fclose(file);
 
   // Setup debug info.
-  auto last_slash = fixed_path.find_last_of(xe::kPathSeparator);
+  auto last_slash = fixed_path.find_last_of(xe::kPathSeparator<wchar_t>);
   if (last_slash != std::string::npos) {
     name_ = xe::to_string(fixed_path.substr(last_slash + 1));
   } else {

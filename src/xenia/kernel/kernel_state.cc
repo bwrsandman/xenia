@@ -350,7 +350,7 @@ void KernelState::LoadKernelModule(object_ref<KernelModule> kernel_module) {
 object_ref<UserModule> KernelState::LoadUserModule(const char* raw_name,
                                                    bool call_entry) {
   // Some games try to load relative to launch module, others specify full path.
-  std::string name = xe::find_name_from_path(raw_name);
+  std::string name = xe::find_name_from_path(raw_name, '\\');
   std::string path(raw_name);
   if (name == raw_name) {
     assert_not_null(executable_module_);

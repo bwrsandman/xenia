@@ -432,7 +432,7 @@ void EmulatorWindow::UpdateTitle() {
 
   if (emulator()->is_title_open()) {
     auto game_title = emulator()->game_title();
-    title += xe::format_string(L" | [%.8X] %s", emulator()->title_id(),
+    title += xe::format_string(L" | [%.8X] %ls", emulator()->title_id(),
                                game_title.c_str());
   }
 

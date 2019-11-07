@@ -50,8 +50,8 @@ struct TestCase {
 class TestSuite {
  public:
   TestSuite(const std::wstring& src_file_path) : src_file_path(src_file_path) {
-    name = src_file_path.substr(src_file_path.find_last_of(xe::kPathSeparator) +
-                                1);
+    name = src_file_path.substr(
+        src_file_path.find_last_of(xe::kPathSeparator<char>) + 1);
     name = ReplaceExtension(name, L"");
     map_file_path = xe::to_wstring(cvars::test_bin_path) + name + L".map";
     bin_file_path = xe::to_wstring(cvars::test_bin_path) + name + L".bin";

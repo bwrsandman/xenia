@@ -128,7 +128,7 @@ Entry* VirtualFileSystem::ResolvePath(const std::string& path) {
 }
 
 Entry* VirtualFileSystem::ResolveBasePath(const std::string& path) {
-  auto base_path = xe::find_base_path(path);
+  auto base_path = xe::find_base_path(path, '\\');
   return ResolvePath(base_path);
 }
 
@@ -146,7 +146,7 @@ Entry* VirtualFileSystem::CreatePath(const std::string& path,
   }
   auto parent_entry = partial_entry;
   for (size_t i = 1; i < path_parts.size() - 1; ++i) {
-    partial_path = xe::join_paths(partial_path, path_parts[i]);
+    partial_path = xe::join_paths(partial_path, path_parts[i], '\\');
     auto child_entry = ResolvePath(partial_path);
     if (!child_entry) {
       child_entry =
@@ -196,14 +196,14 @@ X_STATUS VirtualFileSystem::OpenFile(const std::string& path,
   // If no device or parent, fail.
   Entry* parent_entry = nullptr;
   Entry* entry = nullptr;
-  if (!xe::find_base_path(path).empty()) {
+  if (!xe::find_base_path(path, '\\').empty()) {
     parent_entry = ResolveBasePath(path);
     if (!parent_entry) {
       *out_action = FileAction::kDoesNotExist;
       return X_STATUS_NO_SUCH_FILE;
     }
 
-    auto file_name = xe::find_name_from_path(path);
+    auto file_name = xe::find_name_from_path(path, '\\');
     entry = parent_entry->GetChild(file_name);
   } else {
     entry = ResolvePath(path);
