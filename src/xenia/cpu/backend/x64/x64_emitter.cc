@@ -2,7 +2,7 @@
  ******************************************************************************
  * Xenia : Xbox 360 Emulator Research Project                                 *
  ******************************************************************************
- * Copyright 2013 Ben Vanik. All rights reserved.                             *
+ * Copyright 2019 Ben Vanik. All rights reserved.                             *
  * Released under the BSD license - see LICENSE in the root for more details. *
  ******************************************************************************
  */
@@ -102,14 +102,14 @@ bool X64Emitter::Emit(GuestFunction* function, HIRBuilder* builder,
   source_map_arena_.Reset();
 
   // Fill the generator with code.
-  size_t stack_size = 0;
-  if (!Emit(builder, &stack_size)) {
+  EmitFunctionInfo func_info = {};
+  if (!Emit(builder, func_info)) {
     return false;
   }
 
   // Copy the final code to the cache and relocate it.
   *out_code_size = getSize();
-  *out_code_address = Emplace(stack_size, function);
+  *out_code_address = Emplace(func_info, function);
 
   // Stash source map.
   source_map_arena_.CloneContents(out_source_map);
@@ -117,18 +117,20 @@ bool X64Emitter::Emit(GuestFunction* function, HIRBuilder* builder,
   return true;
 }
 
-void* X64Emitter::Emplace(size_t stack_size, GuestFunction* function) {
+void* X64Emitter::Emplace(const EmitFunctionInfo& func_info,
+                          GuestFunction* function) {
   // To avoid changing xbyak, we do a switcharoo here.
   // top_ points to the Xbyak buffer, and since we are in AutoGrow mode
   // it has pending relocations. We copy the top_ to our buffer, swap the
   // pointer, relocate, then return the original scratch pointer for use.
   uint8_t* old_address = top_;
   void* new_address;
+  assert_true(func_info.code_size.total == size_);
   if (function) {
-    new_address = code_cache_->PlaceGuestCode(function->address(), top_, size_,
-                                              stack_size, function);
+    new_address = code_cache_->PlaceGuestCode(function->address(), top_,
+                                              func_info, function);
   } else {
-    new_address = code_cache_->PlaceHostCode(0, top_, size_, stack_size);
+    new_address = code_cache_->PlaceHostCode(0, top_, func_info);
   }
   top_ = reinterpret_cast<uint8_t*>(new_address);
   ready();
@@ -137,7 +139,7 @@ void* X64Emitter::Emplace(size_t stack_size, GuestFunction* function) {
   return new_address;
 }
 
-bool X64Emitter::Emit(HIRBuilder* builder, size_t* out_stack_size) {
+bool X64Emitter::Emit(HIRBuilder* builder, EmitFunctionInfo& func_info) {
   Xbyak::Label epilog_label;
   epilog_label_ = &epilog_label;
 
@@ -159,6 +161,16 @@ bool X64Emitter::Emit(HIRBuilder* builder, size_t* out_stack_size) {
   stack_offset -= StackLayout::GUEST_STACK_SIZE;
   stack_offset = xe::align(stack_offset, static_cast<size_t>(16));
 
+  struct _code_offsets {
+    size_t prolog;
+    size_t prolog_stack_alloc;
+    size_t body;
+    size_t epilog;
+    size_t tail;
+  } code_offsets = {};
+
+  code_offsets.prolog = getSize();
+
   // Function prolog.
   // Must be 16b aligned.
   // Windows is very strict about the form of this and the epilog:
@@ -168,10 +180,13 @@ bool X64Emitter::Emit(HIRBuilder* builder, size_t* out_stack_size) {
   //     Adding or changing anything here must be matched!
   const size_t stack_size = StackLayout::GUEST_STACK_SIZE + stack_offset;
   assert_true((stack_size + 8) % 16 == 0);
-  *out_stack_size = stack_size;
+  func_info.stack_size = stack_size;
   stack_size_ = stack_size;
 
   sub(rsp, (uint32_t)stack_size);
+
+  code_offsets.prolog_stack_alloc = getSize();
+
   mov(qword[rsp + StackLayout::GUEST_CTX_HOME], GetContextReg());
   mov(qword[rsp + StackLayout::GUEST_RET_ADDR], rcx);
   mov(qword[rsp + StackLayout::GUEST_CALL_RET_ADDR], 0);
@@ -208,6 +223,8 @@ bool X64Emitter::Emit(HIRBuilder* builder, size_t* out_stack_size) {
   mov(GetMembaseReg(),
       qword[GetContextReg() + offsetof(ppc::PPCContext, virtual_membase)]);
 
+  code_offsets.body = getSize();
+
   // Body.
   auto block = builder->first_block();
   while (block) {
@@ -236,6 +253,8 @@ bool X64Emitter::Emit(HIRBuilder* builder, size_t* out_stack_size) {
     block = block->next;
   }
 
+  code_offsets.epilog = getSize();
+
   // Function epilog.
   L(epilog_label);
   epilog_label_ = nullptr;
@@ -244,6 +263,8 @@ bool X64Emitter::Emit(HIRBuilder* builder, size_t* out_stack_size) {
   add(rsp, (uint32_t)stack_size);
   ret();
 
+  code_offsets.tail = getSize();
+
   if (cvars::emit_source_annotations) {
     nop();
     nop();
@@ -251,6 +272,15 @@ bool X64Emitter::Emit(HIRBuilder* builder, size_t* out_stack_size) {
     nop();
     nop();
   }
+
+  assert_zero(code_offsets.prolog);
+  func_info.code_size.total = getSize();
+  func_info.code_size.prolog = code_offsets.body - code_offsets.prolog;
+  func_info.code_size.body = code_offsets.epilog - code_offsets.body;
+  func_info.code_size.epilog = code_offsets.tail - code_offsets.epilog;
+  func_info.code_size.tail = getSize() - code_offsets.tail;
+  func_info.prolog_stack_alloc_offset =
+      code_offsets.prolog_stack_alloc - code_offsets.prolog;
 
   return true;
 }
@@ -461,14 +491,19 @@ void X64Emitter::CallExtern(const hir::Instr* instr, const Function* function) {
     if (builtin_function->handler()) {
       undefined = false;
       // rcx = target function
-      // rdx = arg0
-      // r8  = arg1
-      // r9  = arg2
+      // rdx (windows), r8 (linux) = arg0
+      // r8  (windows), rdx (linux) = arg1
+      // r9  (windows), rcx (linux) = arg2
       auto thunk = backend()->guest_to_host_thunk();
       mov(rax, reinterpret_cast<uint64_t>(thunk));
       mov(rcx, reinterpret_cast<uint64_t>(builtin_function->handler()));
+#if XE_PLATFORM_LINUX
+      mov(rbx, reinterpret_cast<uint64_t>(builtin_function->arg0()));
+      mov(rdx, reinterpret_cast<uint64_t>(builtin_function->arg1()));
+#else
       mov(rdx, reinterpret_cast<uint64_t>(builtin_function->arg0()));
       mov(r8, reinterpret_cast<uint64_t>(builtin_function->arg1()));
+#endif
       call(rax);
       // rax = host return
     }
@@ -477,9 +512,9 @@ void X64Emitter::CallExtern(const hir::Instr* instr, const Function* function) {
     if (extern_function->extern_handler()) {
       undefined = false;
       // rcx = target function
-      // rdx = arg0
-      // r8  = arg1
-      // r9  = arg2
+      // rdx (windows), r8 (linux) = arg0
+      // r8  (windows), rdx (linux) = arg1
+      // r9  (windows), rcx (linux) = arg2
       auto thunk = backend()->guest_to_host_thunk();
       mov(rax, reinterpret_cast<uint64_t>(thunk));
       mov(rcx, reinterpret_cast<uint64_t>(extern_function->extern_handler()));
@@ -512,9 +547,9 @@ void X64Emitter::CallNative(uint64_t (*fn)(void* raw_context, uint64_t arg0),
 
 void X64Emitter::CallNativeSafe(void* fn) {
   // rcx = target function
-  // rdx = arg0
-  // r8  = arg1
-  // r9  = arg2
+  // rdx (windows), r8 (linux) = arg0
+  // r8  (windows), rdx (linux) = arg1
+  // r9  (windows), rcx (linux) = arg2
   auto thunk = backend()->guest_to_host_thunk();
   mov(rax, reinterpret_cast<uint64_t>(thunk));
   mov(rcx, reinterpret_cast<uint64_t>(fn));
@@ -528,6 +563,17 @@ void X64Emitter::SetReturnAddress(uint64_t value) {
 }
 
 Xbyak::Reg64 X64Emitter::GetNativeParam(uint32_t param) {
+#if XE_PLATFORM_LINUX
+  if (param == 0)
+    return rbx;
+  else if (param == 1)
+    return rdx;
+  else if (param == 2)
+    return rcx;
+
+  assert_always();
+  return rcx;
+#else
   if (param == 0)
     return rdx;
   else if (param == 1)
@@ -537,6 +583,7 @@ Xbyak::Reg64 X64Emitter::GetNativeParam(uint32_t param) {
 
   assert_always();
   return r9;
+#endif
 }
 
 // Important: If you change these, you must update the thunks in x64_backend.cc!
