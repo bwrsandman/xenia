@@ -138,7 +138,7 @@ void* X64CodeCache::PlaceGuestCode(uint32_t guest_address, void* machine_code,
   // unwind table requires entries AND code to be sorted in order.
   size_t low_mark;
   size_t high_mark;
-  uint8_t* code_address = nullptr;
+  uint8_t* code_address;
   UnwindReservation unwind_reservation;
   {
     auto global_lock = global_critical_region_.Acquire();
@@ -150,12 +150,16 @@ void* X64CodeCache::PlaceGuestCode(uint32_t guest_address, void* machine_code,
     code_address = generated_code_base_ + generated_code_offset_;
     generated_code_offset_ += xe::round_up(func_info.code_size.total, 16);
 
+    auto tail_address = generated_code_base_ + generated_code_offset_;
+
     // Reserve unwind info.
     // We go on the high size of the unwind info as we don't know how big we
     // need it, and a few extra bytes of padding isn't the worst thing.
     unwind_reservation =
         RequestUnwindReservation(generated_code_base_ + generated_code_offset_);
-    generated_code_offset_ += unwind_reservation.data_size;
+    generated_code_offset_ += xe::round_up(unwind_reservation.data_size, 16);
+
+    auto end_address = generated_code_base_ + generated_code_offset_;
 
     high_mark = generated_code_offset_;
 
@@ -189,11 +193,8 @@ void* X64CodeCache::PlaceGuestCode(uint32_t guest_address, void* machine_code,
     std::memcpy(code_address, machine_code, func_info.code_size.total);
 
     // Fill unused slots with 0xCC
-    std::memset(
-        code_address + func_info.code_size.total, 0xCC,
-        xe::round_up(func_info.code_size.total + unwind_reservation.data_size,
-                     16) -
-            func_info.code_size.total);
+    std::memset(tail_address, 0xCC,
+                static_cast<size_t>(end_address - tail_address));
 
     // Notify subclasses of placed code.
     PlaceCode(guest_address, machine_code, func_info, code_address,

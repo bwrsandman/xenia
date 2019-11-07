@@ -18,6 +18,9 @@ VulkanCommandProcessor::VulkanCommandProcessor(
     : CommandProcessor(graphics_system, kernel_state) {}
 VulkanCommandProcessor::~VulkanCommandProcessor() = default;
 
+void VulkanCommandProcessor::TracePlaybackWroteMemory(uint32_t base_ptr,
+                                                      uint32_t length) {}
+
 bool VulkanCommandProcessor::SetupContext() { return true; }
 
 void VulkanCommandProcessor::ShutdownContext() {}
@@ -40,6 +43,10 @@ bool VulkanCommandProcessor::IssueDraw(PrimitiveType primitive_type,
 }
 
 bool VulkanCommandProcessor::IssueCopy() { return true; }
+
+void VulkanCommandProcessor::InitializeTrace() {}
+
+void VulkanCommandProcessor::FinalizeTrace() {}
 
 }  // namespace vk
 }  // namespace gpu

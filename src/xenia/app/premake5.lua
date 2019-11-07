@@ -23,6 +23,7 @@ project("xenia-app")
     "xenia-app-discord",
     "xenia-apu",
     "xenia-apu-nop",
+    "xenia-apu-sdl",
     "xenia-base",
     "xenia-core",
     "xenia-cpu",
@@ -70,16 +71,25 @@ project("xenia-app")
       "X11",
       "xcb",
       "X11-xcb",
+      "GL",
+      "vulkan",
+      "SDL2",
     })
 
   filter("platforms:Windows")
     links({
+      "delayimp", -- Enable dll delayed loading for msvc
       "xenia-apu-xaudio2",
       "xenia-gpu-d3d12",
       "xenia-hid-winkey",
       "xenia-hid-xinput",
       "xenia-ui-d3d12",
     })
+
+    filter("platforms:Windows")
+      linkoptions({
+        "/DELAYLOAD:SDL2.dll",  -- SDL is not mandatory since on windows, XAudio2 is available for sound
+      })
 
   filter("platforms:Windows")
     -- Only create the .user file if it doesn't already exist.

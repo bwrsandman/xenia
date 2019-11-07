@@ -108,10 +108,11 @@ bool ShaderTranslator::GatherAllBindingInformation(Shader* shader) {
 }
 
 bool ShaderTranslator::Translate(Shader* shader, PrimitiveType patch_type,
-                                 xenos::xe_gpu_program_cntl_t cntl) {
+                                 reg::SQ_PROGRAM_CNTL cntl) {
   Reset();
-  register_count_ = shader->type() == ShaderType::kVertex ? cntl.vs_regs + 1
-                                                          : cntl.ps_regs + 1;
+  uint32_t cntl_num_reg =
+      shader->type() == ShaderType::kVertex ? cntl.vs_num_reg : cntl.ps_num_reg;
+  register_count_ = (cntl_num_reg & 0x80) ? 0 : (cntl_num_reg + 1);
 
   return TranslateInternal(shader, patch_type);
 }
@@ -1035,6 +1036,8 @@ void ShaderTranslator::ParseTextureFetchInstruction(
     i.attributes.min_filter = op.min_filter();
     i.attributes.mip_filter = op.mip_filter();
     i.attributes.aniso_filter = op.aniso_filter();
+    i.attributes.vol_mag_filter = op.vol_mag_filter();
+    i.attributes.vol_min_filter = op.vol_min_filter();
     i.attributes.use_computed_lod = op.use_computed_lod();
     i.attributes.use_register_lod = op.use_register_lod();
     i.attributes.use_register_gradients = op.use_register_gradients();

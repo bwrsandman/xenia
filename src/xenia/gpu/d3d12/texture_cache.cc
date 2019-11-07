@@ -97,313 +97,741 @@ constexpr uint32_t TextureCache::kScaledResolveBufferSize;
 constexpr uint32_t TextureCache::kScaledResolveHeapSizeLog2;
 constexpr uint32_t TextureCache::kScaledResolveHeapSize;
 
+// For formats with less than 4 components, assuming the last component is
+// replicated into the non-existent ones, similar to what is done for unused
+// components of operands in shaders.
+// For DXT3A and DXT5A, RRRR swizzle is specified in:
+// http://fileadmin.cs.lth.se/cs/Personal/Michael_Doggett/talks/unc-xenos-doggett.pdf
+// Halo 3 also expects replicated components in k_8 sprites.
+// DXN is read as RG in Halo 3, but as RA in Call of Duty.
+// TODO(Triang3l): Find out the correct contents of unused texture components.
 const TextureCache::HostFormat TextureCache::host_formats_[64] = {
     // k_1_REVERSE
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, true},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 0, 0, 0}},
     // k_1
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, true},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 0, 0, 0}},
     // k_8
-    {DXGI_FORMAT_R8_TYPELESS, DXGI_FORMAT_R8_UNORM, LoadMode::k8bpb,
-     DXGI_FORMAT_R8_SNORM, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_R8_UNORM, ResolveTileMode::k8bpp, true},
+    {DXGI_FORMAT_R8_TYPELESS,
+     DXGI_FORMAT_R8_UNORM,
+     LoadMode::k8bpb,
+     DXGI_FORMAT_R8_SNORM,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R8_UNORM,
+     ResolveTileMode::k8bpp,
+     {0, 0, 0, 0}},
     // k_1_5_5_5
-    {DXGI_FORMAT_B5G5R5A1_UNORM, DXGI_FORMAT_B5G5R5A1_UNORM, LoadMode::k16bpb,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_R8G8B8A8_UNORM,
-     ResolveTileMode::k16bppRGBA, false},
+    // Red and blue swapped in the load shader for simplicity.
+    {DXGI_FORMAT_B5G5R5A1_UNORM,
+     DXGI_FORMAT_B5G5R5A1_UNORM,
+     LoadMode::k16bpb,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R8G8B8A8_UNORM,
+     ResolveTileMode::k16bppRGBA,
+     {0, 1, 2, 3}},
     // k_5_6_5
-    {DXGI_FORMAT_B5G6R5_UNORM, DXGI_FORMAT_B5G6R5_UNORM, LoadMode::k16bpb,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_B5G6R5_UNORM, ResolveTileMode::k16bpp,
-     false},
+    // Red and blue swapped in the load shader for simplicity.
+    {DXGI_FORMAT_B5G6R5_UNORM,
+     DXGI_FORMAT_B5G6R5_UNORM,
+     LoadMode::k16bpb,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_B5G6R5_UNORM,
+     ResolveTileMode::k16bpp,
+     {0, 1, 2, 2}},
     // k_6_5_5
-    // Green bits in blue, blue bits in green - RBGA swizzle must be used.
-    {DXGI_FORMAT_B5G6R5_UNORM, DXGI_FORMAT_B5G6R5_UNORM, LoadMode::k16bpb,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_B5G6R5_UNORM, ResolveTileMode::k16bpp,
-     false},
+    // On the host, green bits in blue, blue bits in green.
+    {DXGI_FORMAT_B5G6R5_UNORM,
+     DXGI_FORMAT_B5G6R5_UNORM,
+     LoadMode::k16bpb,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_B5G6R5_UNORM,
+     ResolveTileMode::k16bpp,
+     {0, 2, 1, 1}},
     // k_8_8_8_8
-    {DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R8G8B8A8_UNORM,
-     LoadMode::k32bpb, DXGI_FORMAT_R8G8B8A8_SNORM, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_R8G8B8A8_UNORM,
-     ResolveTileMode::k32bpp, false},
+    {DXGI_FORMAT_R8G8B8A8_TYPELESS,
+     DXGI_FORMAT_R8G8B8A8_UNORM,
+     LoadMode::k32bpb,
+     DXGI_FORMAT_R8G8B8A8_SNORM,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R8G8B8A8_UNORM,
+     ResolveTileMode::k32bpp,
+     {0, 1, 2, 3}},
     // k_2_10_10_10
-    {DXGI_FORMAT_R10G10B10A2_TYPELESS, DXGI_FORMAT_R10G10B10A2_UNORM,
-     LoadMode::k32bpb, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_R10G10B10A2_UNORM,
-     ResolveTileMode::k32bpp, false},
+    {DXGI_FORMAT_R10G10B10A2_TYPELESS,
+     DXGI_FORMAT_R10G10B10A2_UNORM,
+     LoadMode::k32bpb,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R10G10B10A2_UNORM,
+     ResolveTileMode::k32bpp,
+     {0, 1, 2, 3}},
     // k_8_A
-    {DXGI_FORMAT_R8_TYPELESS, DXGI_FORMAT_R8_UNORM, LoadMode::k8bpb,
-     DXGI_FORMAT_R8_SNORM, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_R8_UNORM, ResolveTileMode::k8bpp, true},
+    {DXGI_FORMAT_R8_TYPELESS,
+     DXGI_FORMAT_R8_UNORM,
+     LoadMode::k8bpb,
+     DXGI_FORMAT_R8_SNORM,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R8_UNORM,
+     ResolveTileMode::k8bpp,
+     {0, 0, 0, 0}},
     // k_8_B
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, true},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 0, 0, 0}},
     // k_8_8
-    {DXGI_FORMAT_R8G8_TYPELESS, DXGI_FORMAT_R8G8_UNORM, LoadMode::k16bpb,
-     DXGI_FORMAT_R8G8_SNORM, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_R8G8_UNORM, ResolveTileMode::k16bpp,
-     false},
+    {DXGI_FORMAT_R8G8_TYPELESS,
+     DXGI_FORMAT_R8G8_UNORM,
+     LoadMode::k16bpb,
+     DXGI_FORMAT_R8G8_SNORM,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R8G8_UNORM,
+     ResolveTileMode::k16bpp,
+     {0, 1, 1, 1}},
     // k_Cr_Y1_Cb_Y0_REP
-    {DXGI_FORMAT_G8R8_G8B8_UNORM, DXGI_FORMAT_G8R8_G8B8_UNORM, LoadMode::k32bpb,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, false},
+    // Red and blue probably must be swapped, similar to k_Y1_Cr_Y0_Cb_REP.
+    {DXGI_FORMAT_G8R8_G8B8_UNORM,
+     DXGI_FORMAT_G8R8_G8B8_UNORM,
+     LoadMode::k32bpb,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {2, 1, 0, 3}},
     // k_Y1_Cr_Y0_Cb_REP
-    // Used for videos in NBA 2K9. Red and blue must be flipped.
+    // Used for videos in NBA 2K9. Red and blue must be swapped.
     // TODO(Triang3l): D3DFMT_G8R8_G8B8 is DXGI_FORMAT_R8G8_B8G8_UNORM * 255.0f,
     // watch out for num_format int, division in shaders, etc., in NBA 2K9 it
     // works as is. Also need to decompress if the size is uneven, but should be
     // a very rare case.
-    {DXGI_FORMAT_R8G8_B8G8_UNORM, DXGI_FORMAT_R8G8_B8G8_UNORM, LoadMode::k32bpb,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, false},
+    {DXGI_FORMAT_R8G8_B8G8_UNORM,
+     DXGI_FORMAT_R8G8_B8G8_UNORM,
+     LoadMode::k32bpb,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {2, 1, 0, 3}},
     // k_16_16_EDRAM
     // Not usable as a texture, also has -32...32 range.
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, false},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 1, 1}},
     // k_8_8_8_8_A
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, false},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 2, 3}},
     // k_4_4_4_4
-    {DXGI_FORMAT_B4G4R4A4_UNORM, DXGI_FORMAT_B4G4R4A4_UNORM, LoadMode::k16bpb,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_R8G8B8A8_UNORM,
-     ResolveTileMode::k16bppRGBA, false},
+    // Red and blue swapped in the load shader for simplicity.
+    {DXGI_FORMAT_B4G4R4A4_UNORM,
+     DXGI_FORMAT_B4G4R4A4_UNORM,
+     LoadMode::k16bpb,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R8G8B8A8_UNORM,
+     ResolveTileMode::k16bppRGBA,
+     {0, 1, 2, 3}},
     // k_10_11_11
-    {DXGI_FORMAT_R16G16B16A16_TYPELESS, DXGI_FORMAT_R16G16B16A16_UNORM,
-     LoadMode::kR11G11B10ToRGBA16, DXGI_FORMAT_R16G16B16A16_SNORM,
-     LoadMode::kR11G11B10ToRGBA16SNorm, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_R16G16B16A16_UNORM, ResolveTileMode::kR11G11B10AsRGBA16,
-     false},
+    {DXGI_FORMAT_R16G16B16A16_TYPELESS,
+     DXGI_FORMAT_R16G16B16A16_UNORM,
+     LoadMode::kR11G11B10ToRGBA16,
+     DXGI_FORMAT_R16G16B16A16_SNORM,
+     LoadMode::kR11G11B10ToRGBA16SNorm,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R16G16B16A16_UNORM,
+     ResolveTileMode::kR11G11B10AsRGBA16,
+     {0, 1, 2, 2}},
     // k_11_11_10
-    {DXGI_FORMAT_R16G16B16A16_TYPELESS, DXGI_FORMAT_R16G16B16A16_UNORM,
-     LoadMode::kR10G11B11ToRGBA16, DXGI_FORMAT_R16G16B16A16_SNORM,
-     LoadMode::kR10G11B11ToRGBA16SNorm, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_R16G16B16A16_UNORM, ResolveTileMode::kR10G11B11AsRGBA16,
-     false},
+    {DXGI_FORMAT_R16G16B16A16_TYPELESS,
+     DXGI_FORMAT_R16G16B16A16_UNORM,
+     LoadMode::kR10G11B11ToRGBA16,
+     DXGI_FORMAT_R16G16B16A16_SNORM,
+     LoadMode::kR10G11B11ToRGBA16SNorm,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R16G16B16A16_UNORM,
+     ResolveTileMode::kR10G11B11AsRGBA16,
+     {0, 1, 2, 2}},
     // k_DXT1
-    {DXGI_FORMAT_BC1_UNORM, DXGI_FORMAT_BC1_UNORM, LoadMode::k64bpb,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_R8G8B8A8_UNORM,
-     LoadMode::kDXT1ToRGBA8, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown,
-     false},
+    {DXGI_FORMAT_BC1_UNORM,
+     DXGI_FORMAT_BC1_UNORM,
+     LoadMode::k64bpb,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R8G8B8A8_UNORM,
+     LoadMode::kDXT1ToRGBA8,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 2, 3}},
     // k_DXT2_3
-    {DXGI_FORMAT_BC2_UNORM, DXGI_FORMAT_BC2_UNORM, LoadMode::k128bpb,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_R8G8B8A8_UNORM,
-     LoadMode::kDXT3ToRGBA8, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown,
-     false},
+    {DXGI_FORMAT_BC2_UNORM,
+     DXGI_FORMAT_BC2_UNORM,
+     LoadMode::k128bpb,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R8G8B8A8_UNORM,
+     LoadMode::kDXT3ToRGBA8,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 2, 3}},
     // k_DXT4_5
-    {DXGI_FORMAT_BC3_UNORM, DXGI_FORMAT_BC3_UNORM, LoadMode::k128bpb,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_R8G8B8A8_UNORM,
-     LoadMode::kDXT5ToRGBA8, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown,
-     false},
+    {DXGI_FORMAT_BC3_UNORM,
+     DXGI_FORMAT_BC3_UNORM,
+     LoadMode::k128bpb,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R8G8B8A8_UNORM,
+     LoadMode::kDXT5ToRGBA8,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 2, 3}},
     // k_16_16_16_16_EDRAM
     // Not usable as a texture, also has -32...32 range.
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, false},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 2, 3}},
     // R32_FLOAT for depth because shaders would require an additional SRV to
     // sample stencil, which we don't provide.
     // k_24_8
-    {DXGI_FORMAT_R32_FLOAT, DXGI_FORMAT_R32_FLOAT, LoadMode::kDepthUnorm,
-     DXGI_FORMAT_R32_FLOAT, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, true},
+    {DXGI_FORMAT_R32_FLOAT,
+     DXGI_FORMAT_R32_FLOAT,
+     LoadMode::kDepthUnorm,
+     DXGI_FORMAT_R32_FLOAT,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 0, 0, 0}},
     // k_24_8_FLOAT
-    {DXGI_FORMAT_R32_FLOAT, DXGI_FORMAT_R32_FLOAT, LoadMode::kDepthFloat,
-     DXGI_FORMAT_R32_FLOAT, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, true},
+    {DXGI_FORMAT_R32_FLOAT,
+     DXGI_FORMAT_R32_FLOAT,
+     LoadMode::kDepthFloat,
+     DXGI_FORMAT_R32_FLOAT,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 0, 0, 0}},
     // k_16
-    {DXGI_FORMAT_R16_TYPELESS, DXGI_FORMAT_R16_UNORM, LoadMode::k16bpb,
-     DXGI_FORMAT_R16_SNORM, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_R16_UNORM, ResolveTileMode::k16bpp, true},
+    {DXGI_FORMAT_R16_TYPELESS,
+     DXGI_FORMAT_R16_UNORM,
+     LoadMode::k16bpb,
+     DXGI_FORMAT_R16_SNORM,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R16_UNORM,
+     ResolveTileMode::k16bpp,
+     {0, 0, 0, 0}},
     // k_16_16
     // The resolve format being unorm is correct (with snorm distortion effects
     // in Halo 3 cause stretching of one corner of the screen).
-    {DXGI_FORMAT_R16G16_TYPELESS, DXGI_FORMAT_R16G16_UNORM, LoadMode::k32bpb,
-     DXGI_FORMAT_R16G16_SNORM, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_R16G16_UNORM, ResolveTileMode::k32bpp,
-     false},
+    {DXGI_FORMAT_R16G16_TYPELESS,
+     DXGI_FORMAT_R16G16_UNORM,
+     LoadMode::k32bpb,
+     DXGI_FORMAT_R16G16_SNORM,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R16G16_UNORM,
+     ResolveTileMode::k32bpp,
+     {0, 1, 1, 1}},
     // k_16_16_16_16
     // The resolve format being unorm is correct (with snorm distortion effects
     // in Halo 3 cause stretching of one corner of the screen).
-    {DXGI_FORMAT_R16G16B16A16_TYPELESS, DXGI_FORMAT_R16G16B16A16_UNORM,
-     LoadMode::k64bpb, DXGI_FORMAT_R16G16B16A16_SNORM, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_R16G16B16A16_UNORM,
-     ResolveTileMode::k64bpp, false},
+    {DXGI_FORMAT_R16G16B16A16_TYPELESS,
+     DXGI_FORMAT_R16G16B16A16_UNORM,
+     LoadMode::k64bpb,
+     DXGI_FORMAT_R16G16B16A16_SNORM,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R16G16B16A16_UNORM,
+     ResolveTileMode::k64bpp,
+     {0, 1, 2, 3}},
     // k_16_EXPAND
-    {DXGI_FORMAT_R16_FLOAT, DXGI_FORMAT_R16_FLOAT, LoadMode::k16bpb,
-     DXGI_FORMAT_R16_FLOAT, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_R16_FLOAT, ResolveTileMode::k16bpp, true},
+    {DXGI_FORMAT_R16_FLOAT,
+     DXGI_FORMAT_R16_FLOAT,
+     LoadMode::k16bpb,
+     DXGI_FORMAT_R16_FLOAT,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R16_FLOAT,
+     ResolveTileMode::k16bpp,
+     {0, 0, 0, 0}},
     // k_16_16_EXPAND
-    {DXGI_FORMAT_R16G16_FLOAT, DXGI_FORMAT_R16G16_FLOAT, LoadMode::k32bpb,
-     DXGI_FORMAT_R16G16_FLOAT, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_R16G16_FLOAT, ResolveTileMode::k32bpp,
-     false},
+    {DXGI_FORMAT_R16G16_FLOAT,
+     DXGI_FORMAT_R16G16_FLOAT,
+     LoadMode::k32bpb,
+     DXGI_FORMAT_R16G16_FLOAT,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R16G16_FLOAT,
+     ResolveTileMode::k32bpp,
+     {0, 1, 1, 1}},
     // k_16_16_16_16_EXPAND
-    {DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_FORMAT_R16G16B16A16_FLOAT,
-     LoadMode::k64bpb, DXGI_FORMAT_R16G16B16A16_FLOAT, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_R16G16B16A16_FLOAT,
-     ResolveTileMode::k64bpp, false},
+    {DXGI_FORMAT_R16G16B16A16_FLOAT,
+     DXGI_FORMAT_R16G16B16A16_FLOAT,
+     LoadMode::k64bpb,
+     DXGI_FORMAT_R16G16B16A16_FLOAT,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R16G16B16A16_FLOAT,
+     ResolveTileMode::k64bpp,
+     {0, 1, 2, 3}},
     // k_16_FLOAT
-    {DXGI_FORMAT_R16_FLOAT, DXGI_FORMAT_R16_FLOAT, LoadMode::k16bpb,
-     DXGI_FORMAT_R16_FLOAT, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_R16_FLOAT, ResolveTileMode::k16bpp, true},
+    {DXGI_FORMAT_R16_FLOAT,
+     DXGI_FORMAT_R16_FLOAT,
+     LoadMode::k16bpb,
+     DXGI_FORMAT_R16_FLOAT,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R16_FLOAT,
+     ResolveTileMode::k16bpp,
+     {0, 0, 0, 0}},
     // k_16_16_FLOAT
-    {DXGI_FORMAT_R16G16_FLOAT, DXGI_FORMAT_R16G16_FLOAT, LoadMode::k32bpb,
-     DXGI_FORMAT_R16G16_FLOAT, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_R16G16_FLOAT, ResolveTileMode::k32bpp,
-     false},
+    {DXGI_FORMAT_R16G16_FLOAT,
+     DXGI_FORMAT_R16G16_FLOAT,
+     LoadMode::k32bpb,
+     DXGI_FORMAT_R16G16_FLOAT,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R16G16_FLOAT,
+     ResolveTileMode::k32bpp,
+     {0, 1, 1, 1}},
     // k_16_16_16_16_FLOAT
-    {DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_FORMAT_R16G16B16A16_FLOAT,
-     LoadMode::k64bpb, DXGI_FORMAT_R16G16B16A16_FLOAT, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_R16G16B16A16_FLOAT,
-     ResolveTileMode::k64bpp, false},
+    {DXGI_FORMAT_R16G16B16A16_FLOAT,
+     DXGI_FORMAT_R16G16B16A16_FLOAT,
+     LoadMode::k64bpb,
+     DXGI_FORMAT_R16G16B16A16_FLOAT,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R16G16B16A16_FLOAT,
+     ResolveTileMode::k64bpp,
+     {0, 1, 2, 3}},
     // k_32
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, true},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 0, 0, 0}},
     // k_32_32
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, false},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 1, 1}},
     // k_32_32_32_32
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, false},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 2, 3}},
     // k_32_FLOAT
-    {DXGI_FORMAT_R32_FLOAT, DXGI_FORMAT_R32_FLOAT, LoadMode::k32bpb,
-     DXGI_FORMAT_R32_FLOAT, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_R32_FLOAT, ResolveTileMode::k32bpp, true},
+    {DXGI_FORMAT_R32_FLOAT,
+     DXGI_FORMAT_R32_FLOAT,
+     LoadMode::k32bpb,
+     DXGI_FORMAT_R32_FLOAT,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R32_FLOAT,
+     ResolveTileMode::k32bpp,
+     {0, 0, 0, 0}},
     // k_32_32_FLOAT
-    {DXGI_FORMAT_R32G32_FLOAT, DXGI_FORMAT_R32G32_FLOAT, LoadMode::k64bpb,
-     DXGI_FORMAT_R32G32_FLOAT, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_R32G32_FLOAT, ResolveTileMode::k64bpp,
-     false},
+    {DXGI_FORMAT_R32G32_FLOAT,
+     DXGI_FORMAT_R32G32_FLOAT,
+     LoadMode::k64bpb,
+     DXGI_FORMAT_R32G32_FLOAT,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R32G32_FLOAT,
+     ResolveTileMode::k64bpp,
+     {0, 1, 1, 1}},
     // k_32_32_32_32_FLOAT
-    {DXGI_FORMAT_R32G32B32A32_FLOAT, DXGI_FORMAT_R32G32B32A32_FLOAT,
-     LoadMode::k128bpb, DXGI_FORMAT_R32G32B32A32_FLOAT, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_R32G32B32A32_FLOAT,
-     ResolveTileMode::k128bpp, false},
+    {DXGI_FORMAT_R32G32B32A32_FLOAT,
+     DXGI_FORMAT_R32G32B32A32_FLOAT,
+     LoadMode::k128bpb,
+     DXGI_FORMAT_R32G32B32A32_FLOAT,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R32G32B32A32_FLOAT,
+     ResolveTileMode::k128bpp,
+     {0, 1, 2, 3}},
     // k_32_AS_8
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, true},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 0, 0, 0}},
     // k_32_AS_8_8
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, false},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 1, 1}},
     // k_16_MPEG
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, true},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 0, 0, 0}},
     // k_16_16_MPEG
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, false},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 1, 1}},
     // k_8_INTERLACED
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, true},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 0, 0, 0}},
     // k_32_AS_8_INTERLACED
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, true},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 0, 0, 0}},
     // k_32_AS_8_8_INTERLACED
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, false},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 1, 1}},
     // k_16_INTERLACED
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, true},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 0, 0, 0}},
     // k_16_MPEG_INTERLACED
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, true},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 0, 0, 0}},
     // k_16_16_MPEG_INTERLACED
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, false},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 1, 1}},
     // k_DXN
-    {DXGI_FORMAT_BC5_UNORM, DXGI_FORMAT_BC5_UNORM, LoadMode::k128bpb,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_R8G8_UNORM,
-     LoadMode::kDXNToRG8, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown,
-     false},
+    {DXGI_FORMAT_BC5_UNORM,
+     DXGI_FORMAT_BC5_UNORM,
+     LoadMode::k128bpb,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R8G8_UNORM,
+     LoadMode::kDXNToRG8,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 1, 1}},
     // k_8_8_8_8_AS_16_16_16_16
-    {DXGI_FORMAT_R8G8B8A8_TYPELESS, DXGI_FORMAT_R8G8B8A8_UNORM,
-     LoadMode::k32bpb, DXGI_FORMAT_R8G8B8A8_SNORM, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_R8G8B8A8_UNORM,
-     ResolveTileMode::k32bpp, false},
+    {DXGI_FORMAT_R8G8B8A8_TYPELESS,
+     DXGI_FORMAT_R8G8B8A8_UNORM,
+     LoadMode::k32bpb,
+     DXGI_FORMAT_R8G8B8A8_SNORM,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R8G8B8A8_UNORM,
+     ResolveTileMode::k32bpp,
+     {0, 1, 2, 3}},
     // k_DXT1_AS_16_16_16_16
-    {DXGI_FORMAT_BC1_UNORM, DXGI_FORMAT_BC1_UNORM, LoadMode::k64bpb,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_R8G8B8A8_UNORM,
-     LoadMode::kDXT1ToRGBA8, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown,
-     false},
+    {DXGI_FORMAT_BC1_UNORM,
+     DXGI_FORMAT_BC1_UNORM,
+     LoadMode::k64bpb,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R8G8B8A8_UNORM,
+     LoadMode::kDXT1ToRGBA8,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 2, 3}},
     // k_DXT2_3_AS_16_16_16_16
-    {DXGI_FORMAT_BC2_UNORM, DXGI_FORMAT_BC2_UNORM, LoadMode::k128bpb,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_R8G8B8A8_UNORM,
-     LoadMode::kDXT3ToRGBA8, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown,
-     false},
+    {DXGI_FORMAT_BC2_UNORM,
+     DXGI_FORMAT_BC2_UNORM,
+     LoadMode::k128bpb,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R8G8B8A8_UNORM,
+     LoadMode::kDXT3ToRGBA8,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 2, 3}},
     // k_DXT4_5_AS_16_16_16_16
-    {DXGI_FORMAT_BC3_UNORM, DXGI_FORMAT_BC3_UNORM, LoadMode::k128bpb,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_R8G8B8A8_UNORM,
-     LoadMode::kDXT5ToRGBA8, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown,
-     false},
+    {DXGI_FORMAT_BC3_UNORM,
+     DXGI_FORMAT_BC3_UNORM,
+     LoadMode::k128bpb,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R8G8B8A8_UNORM,
+     LoadMode::kDXT5ToRGBA8,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 2, 3}},
     // k_2_10_10_10_AS_16_16_16_16
-    {DXGI_FORMAT_R10G10B10A2_UNORM, DXGI_FORMAT_R10G10B10A2_UNORM,
-     LoadMode::k32bpb, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_R10G10B10A2_UNORM,
-     ResolveTileMode::k32bpp, false},
+    {DXGI_FORMAT_R10G10B10A2_UNORM,
+     DXGI_FORMAT_R10G10B10A2_UNORM,
+     LoadMode::k32bpb,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R10G10B10A2_UNORM,
+     ResolveTileMode::k32bpp,
+     {0, 1, 2, 3}},
     // k_10_11_11_AS_16_16_16_16
-    {DXGI_FORMAT_R16G16B16A16_TYPELESS, DXGI_FORMAT_R16G16B16A16_UNORM,
-     LoadMode::kR11G11B10ToRGBA16, DXGI_FORMAT_R16G16B16A16_SNORM,
-     LoadMode::kR11G11B10ToRGBA16SNorm, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_R16G16B16A16_UNORM, ResolveTileMode::kR11G11B10AsRGBA16,
-     false},
+    {DXGI_FORMAT_R16G16B16A16_TYPELESS,
+     DXGI_FORMAT_R16G16B16A16_UNORM,
+     LoadMode::kR11G11B10ToRGBA16,
+     DXGI_FORMAT_R16G16B16A16_SNORM,
+     LoadMode::kR11G11B10ToRGBA16SNorm,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R16G16B16A16_UNORM,
+     ResolveTileMode::kR11G11B10AsRGBA16,
+     {0, 1, 2, 2}},
     // k_11_11_10_AS_16_16_16_16
-    {DXGI_FORMAT_R16G16B16A16_TYPELESS, DXGI_FORMAT_R16G16B16A16_UNORM,
-     LoadMode::kR10G11B11ToRGBA16, DXGI_FORMAT_R16G16B16A16_SNORM,
-     LoadMode::kR10G11B11ToRGBA16SNorm, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_R16G16B16A16_UNORM, ResolveTileMode::kR10G11B11AsRGBA16,
-     false},
+    {DXGI_FORMAT_R16G16B16A16_TYPELESS,
+     DXGI_FORMAT_R16G16B16A16_UNORM,
+     LoadMode::kR10G11B11ToRGBA16,
+     DXGI_FORMAT_R16G16B16A16_SNORM,
+     LoadMode::kR10G11B11ToRGBA16SNorm,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R16G16B16A16_UNORM,
+     ResolveTileMode::kR10G11B11AsRGBA16,
+     {0, 1, 2, 2}},
     // k_32_32_32_FLOAT
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, false},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 2, 2}},
     // k_DXT3A
-    {DXGI_FORMAT_R8_UNORM, DXGI_FORMAT_R8_UNORM, LoadMode::kDXT3A,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, true},
+    // R8_UNORM has the same size as BC2, but doesn't have the 4x4 size
+    // alignment requirement.
+    {DXGI_FORMAT_R8_UNORM,
+     DXGI_FORMAT_R8_UNORM,
+     LoadMode::kDXT3A,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 0, 0, 0}},
     // k_DXT5A
-    {DXGI_FORMAT_BC4_UNORM, DXGI_FORMAT_BC4_UNORM, LoadMode::k64bpb,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_R8_UNORM,
-     LoadMode::kDXT5AToR8, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown,
-     true},
+    {DXGI_FORMAT_BC4_UNORM,
+     DXGI_FORMAT_BC4_UNORM,
+     LoadMode::k64bpb,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_R8_UNORM,
+     LoadMode::kDXT5AToR8,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 0, 0, 0}},
     // k_CTX1
-    {DXGI_FORMAT_R8G8_UNORM, DXGI_FORMAT_R8G8_UNORM, LoadMode::kCTX1,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, false},
+    {DXGI_FORMAT_R8G8_UNORM,
+     DXGI_FORMAT_R8G8_UNORM,
+     LoadMode::kCTX1,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 1, 1}},
     // k_DXT3A_AS_1_1_1_1
-    {DXGI_FORMAT_B4G4R4A4_UNORM, DXGI_FORMAT_B4G4R4A4_UNORM,
-     LoadMode::kDXT3AAs1111, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     ResolveTileMode::kUnknown, false},
+    {DXGI_FORMAT_B4G4R4A4_UNORM,
+     DXGI_FORMAT_B4G4R4A4_UNORM,
+     LoadMode::kDXT3AAs1111,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 2, 3}},
     // k_8_8_8_8_GAMMA_EDRAM
     // Not usable as a texture.
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, false},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 2, 3}},
     // k_2_10_10_10_FLOAT_EDRAM
     // Not usable as a texture.
-    {DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown,
-     DXGI_FORMAT_UNKNOWN, LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN,
-     LoadMode::kUnknown, DXGI_FORMAT_UNKNOWN, ResolveTileMode::kUnknown, false},
+    {DXGI_FORMAT_UNKNOWN,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     LoadMode::kUnknown,
+     DXGI_FORMAT_UNKNOWN,
+     ResolveTileMode::kUnknown,
+     {0, 1, 2, 3}},
 };
 
 const char* const TextureCache::dimension_names_[4] = {"1D", "2D", "3D",
@@ -848,15 +1276,13 @@ void TextureCache::RequestTextures(uint32_t used_vertex_texture_mask,
       continue;
     }
     TextureBinding& binding = texture_bindings_[index];
-    uint32_t r = XE_GPU_REG_SHADER_CONSTANT_FETCH_00_0 + index * 6;
-    auto group =
-        reinterpret_cast<const xenos::xe_gpu_fetch_group_t*>(&regs.values[r]);
+    const auto& fetch = regs.Get<xenos::xe_gpu_texture_fetch_t>(
+        XE_GPU_REG_SHADER_CONSTANT_FETCH_00_0 + index * 6);
     TextureKey old_key = binding.key;
     bool old_has_unsigned = binding.has_unsigned;
     bool old_has_signed = binding.has_signed;
-    BindingInfoFromFetchConstant(group->texture_fetch, binding.key,
-                                 &binding.swizzle, &binding.has_unsigned,
-                                 &binding.has_signed);
+    BindingInfoFromFetchConstant(fetch, binding.key, &binding.swizzle,
+                                 &binding.has_unsigned, &binding.has_signed);
     texture_keys_in_sync_ |= index_bit;
     if (binding.key.IsInvalid()) {
       binding.texture = nullptr;
@@ -1142,18 +1568,15 @@ void TextureCache::WriteTextureSRV(const D3D12Shader::TextureSRV& texture_srv,
 TextureCache::SamplerParameters TextureCache::GetSamplerParameters(
     const D3D12Shader::SamplerBinding& binding) const {
   auto& regs = *register_file_;
-  uint32_t r =
-      XE_GPU_REG_SHADER_CONSTANT_FETCH_00_0 + binding.fetch_constant * 6;
-  auto group =
-      reinterpret_cast<const xenos::xe_gpu_fetch_group_t*>(&regs.values[r]);
-  auto& fetch = group->texture_fetch;
+  const auto& fetch = regs.Get<xenos::xe_gpu_texture_fetch_t>(
+      XE_GPU_REG_SHADER_CONSTANT_FETCH_00_0 + binding.fetch_constant * 6);
 
   SamplerParameters parameters;
 
-  parameters.clamp_x = ClampMode(fetch.clamp_x);
-  parameters.clamp_y = ClampMode(fetch.clamp_y);
-  parameters.clamp_z = ClampMode(fetch.clamp_z);
-  parameters.border_color = BorderColor(fetch.border_color);
+  parameters.clamp_x = fetch.clamp_x;
+  parameters.clamp_y = fetch.clamp_y;
+  parameters.clamp_z = fetch.clamp_z;
+  parameters.border_color = fetch.border_color;
 
   uint32_t mip_min_level = fetch.mip_min_level;
   uint32_t mip_max_level = fetch.mip_max_level;
@@ -1171,7 +1594,7 @@ TextureCache::SamplerParameters TextureCache::GetSamplerParameters(
   parameters.lod_bias = fetch.lod_bias;
 
   AnisoFilter aniso_filter = binding.aniso_filter == AnisoFilter::kUseFetchConst
-                                 ? AnisoFilter(fetch.aniso_filter)
+                                 ? fetch.aniso_filter
                                  : binding.aniso_filter;
   aniso_filter = std::min(aniso_filter, AnisoFilter::kMax_16_1);
   parameters.aniso_filter = aniso_filter;
@@ -1182,17 +1605,17 @@ TextureCache::SamplerParameters TextureCache::GetSamplerParameters(
   } else {
     TextureFilter mag_filter =
         binding.mag_filter == TextureFilter::kUseFetchConst
-            ? TextureFilter(fetch.mag_filter)
+            ? fetch.mag_filter
             : binding.mag_filter;
     parameters.mag_linear = mag_filter == TextureFilter::kLinear;
     TextureFilter min_filter =
         binding.min_filter == TextureFilter::kUseFetchConst
-            ? TextureFilter(fetch.min_filter)
+            ? fetch.min_filter
             : binding.min_filter;
     parameters.min_linear = min_filter == TextureFilter::kLinear;
     TextureFilter mip_filter =
         binding.mip_filter == TextureFilter::kUseFetchConst
-            ? TextureFilter(fetch.mip_filter)
+            ? fetch.mip_filter
             : binding.mip_filter;
     parameters.mip_linear = mip_filter == TextureFilter::kLinear;
     // TODO(Triang3l): Investigate mip_filter TextureFilter::kBaseMap.
@@ -1586,13 +2009,12 @@ void TextureCache::CreateScaledResolveBufferRawUAV(
 
 bool TextureCache::RequestSwapTexture(D3D12_CPU_DESCRIPTOR_HANDLE handle,
                                       TextureFormat& format_out) {
-  auto group = reinterpret_cast<const xenos::xe_gpu_fetch_group_t*>(
-      &register_file_->values[XE_GPU_REG_SHADER_CONSTANT_FETCH_00_0]);
-  auto& fetch = group->texture_fetch;
+  auto& regs = *register_file_;
+  const auto& fetch = regs.Get<xenos::xe_gpu_texture_fetch_t>(
+      XE_GPU_REG_SHADER_CONSTANT_FETCH_00_0);
   TextureKey key;
   uint32_t swizzle;
-  BindingInfoFromFetchConstant(group->texture_fetch, key, &swizzle, nullptr,
-                               nullptr);
+  BindingInfoFromFetchConstant(fetch, key, &swizzle, nullptr, nullptr);
   if (key.base_page == 0 || key.dimension != Dimension::k2D) {
     return false;
   }
@@ -1733,7 +2155,7 @@ void TextureCache::BindingInfoFromFetchConstant(
     return;
   }
 
-  TextureFormat format = GetBaseFormat(TextureFormat(fetch.format));
+  TextureFormat format = GetBaseFormat(fetch.format);
 
   key_out.base_page = base_page;
   key_out.mip_page = mip_page;
@@ -1745,54 +2167,37 @@ void TextureCache::BindingInfoFromFetchConstant(
   key_out.tiled = fetch.tiled;
   key_out.packed_mips = fetch.packed_mips;
   key_out.format = format;
-  key_out.endianness = Endian(fetch.endianness);
+  key_out.endianness = fetch.endianness;
 
   if (swizzle_out != nullptr) {
-    uint32_t swizzle = fetch.swizzle;
-    // 0b000 or 0b111 mask for 0 or 1 swizzles.
-    uint32_t swizzle_constant = swizzle & 0b100100100100;
-    swizzle_constant |= (swizzle_constant >> 1) | (swizzle_constant >> 2);
-    // 0b000 or 0b111 mask for RGBA swizzles.
-    uint32_t swizzle_not_constant = swizzle_constant ^ 0b111111111111;
-    // Get rid of 6 and 7 values (to prevent device losses if the game has
-    // something broken) the quick and dirty way - by changing them to 4 and 5.
-    swizzle &= 0b101101101101 | swizzle_not_constant;
-    // Remap the swizzle according to the texture format. k_1_5_5_5, k_5_6_5 and
-    // k_4_4_4_4 already have red and blue swapped in the load shader for
-    // simplicity.
-    if (format == TextureFormat::k_6_5_5) {
-      // Green bits of the texture used for blue, and blue bits used for green.
-      // Swap 001 and 010 (XOR 011 if either 001 or 010).
-      uint32_t swizzle_green_or_blue =
-          (swizzle & 0b001001001001) ^ ((swizzle >> 1) & 0b001001001001);
-      swizzle ^= (swizzle_green_or_blue | (swizzle_green_or_blue << 1)) &
-                 swizzle_not_constant;
-    } else if (format == TextureFormat::k_Cr_Y1_Cb_Y0_REP ||
-               format == TextureFormat::k_Y1_Cr_Y0_Cb_REP) {
-      // Swap red and blue.
-      swizzle ^= ((~swizzle & 0b001001001001) << 1) & swizzle_not_constant;
-    } else if (host_formats_[uint32_t(format)].replicate_component) {
-      // Replicate the only component of single-component textures, which are
-      // emulated with red formats (including DXT3A, which uses R8 rather than
-      // DXT3 because the resulting size is the same, but there's no 4x4
-      // alignment requirement). If not 0.0 or 1.0 (if the high bit isn't set),
-      // make 0 (red).
-      swizzle &= swizzle_constant;
+    uint32_t swizzle = 0;
+    for (uint32_t i = 0; i < 4; ++i) {
+      uint32_t swizzle_component = (fetch.swizzle >> (i * 3)) & 0b111;
+      if (swizzle_component >= 4) {
+        // Get rid of 6 and 7 values (to prevent device losses if the game has
+        // something broken) the quick and dirty way - by changing them to 4 (0)
+        // and 5 (1).
+        swizzle_component &= 0b101;
+      } else {
+        swizzle_component =
+            host_formats_[uint32_t(format)].swizzle[swizzle_component];
+      }
+      swizzle |= swizzle_component << (i * 3);
     }
     *swizzle_out = swizzle;
   }
 
   if (has_unsigned_out != nullptr) {
-    *has_unsigned_out = TextureSign(fetch.sign_x) != TextureSign::kSigned ||
-                        TextureSign(fetch.sign_y) != TextureSign::kSigned ||
-                        TextureSign(fetch.sign_z) != TextureSign::kSigned ||
-                        TextureSign(fetch.sign_w) != TextureSign::kSigned;
+    *has_unsigned_out = fetch.sign_x != TextureSign::kSigned ||
+                        fetch.sign_y != TextureSign::kSigned ||
+                        fetch.sign_z != TextureSign::kSigned ||
+                        fetch.sign_w != TextureSign::kSigned;
   }
   if (has_signed_out != nullptr) {
-    *has_signed_out = TextureSign(fetch.sign_x) == TextureSign::kSigned ||
-                      TextureSign(fetch.sign_y) == TextureSign::kSigned ||
-                      TextureSign(fetch.sign_z) == TextureSign::kSigned ||
-                      TextureSign(fetch.sign_w) == TextureSign::kSigned;
+    *has_signed_out = fetch.sign_x == TextureSign::kSigned ||
+                      fetch.sign_y == TextureSign::kSigned ||
+                      fetch.sign_z == TextureSign::kSigned ||
+                      fetch.sign_w == TextureSign::kSigned;
   }
 }
 

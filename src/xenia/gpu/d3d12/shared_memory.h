@@ -12,9 +12,11 @@
 
 #include <memory>
 #include <mutex>
+#include <utility>
 #include <vector>
 
 #include "xenia/base/mutex.h"
+#include "xenia/gpu/trace_writer.h"
 #include "xenia/memory.h"
 #include "xenia/ui/d3d12/d3d12_api.h"
 #include "xenia/ui/d3d12/pools.h"
@@ -30,7 +32,8 @@ class D3D12CommandProcessor;
 // system page size granularity.
 class SharedMemory {
  public:
-  SharedMemory(D3D12CommandProcessor* command_processor, Memory* memory);
+  SharedMemory(D3D12CommandProcessor* command_processor, Memory* memory,
+               TraceWriter* trace_writer);
   ~SharedMemory();
 
   bool Initialize();
@@ -99,6 +102,13 @@ class SharedMemory {
   // usable.
   bool RequestRange(uint32_t start, uint32_t length);
 
+  // Marks the range and, if not exact_range, potentially its surroundings
+  // (to up to the first GPU-written page, as an access violation exception
+  // count optimization) as modified by the CPU, also invalidating GPU-written
+  // pages directly in the range.
+  std::pair<uint32_t, uint32_t> MemoryWriteCallback(
+      uint32_t physical_address_start, uint32_t length, bool exact_range);
+
   // Marks the range as containing GPU-generated data (such as resolves),
   // triggering modification callbacks, making it valid (so pages are not
   // copied from the main memory until they're modified by the CPU) and
@@ -124,6 +134,10 @@ class SharedMemory {
   void WriteRawSRVDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE handle);
   void WriteRawUAVDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE handle);
 
+  // Returns true if any downloads were submitted to the command processor.
+  bool InitializeTraceSubmitDownloads();
+  void InitializeTraceCompleteDownloads();
+
  private:
   bool AreTiledResourcesUsed() const;
 
@@ -132,13 +146,12 @@ class SharedMemory {
                       bool written_by_gpu);
 
   D3D12CommandProcessor* command_processor_;
-
   Memory* memory_;
+  TraceWriter* trace_writer_;
 
   // The 512 MB tiled buffer.
   static constexpr uint32_t kBufferSizeLog2 = 29;
   static constexpr uint32_t kBufferSize = 1 << kBufferSizeLog2;
-  static constexpr uint32_t kAddressMask = kBufferSize - 1;
   ID3D12Resource* buffer_ = nullptr;
   D3D12_GPU_VIRTUAL_ADDRESS buffer_gpu_address_ = 0;
   D3D12_RESOURCE_STATES buffer_state_ = D3D12_RESOURCE_STATE_COPY_DEST;
@@ -189,12 +202,9 @@ class SharedMemory {
   //   written by the GPU not synchronized with the CPU (subset of valid pages).
   std::vector<uint64_t> valid_and_gpu_written_pages_;
 
-  // Memory access callback.
   static std::pair<uint32_t, uint32_t> MemoryWriteCallbackThunk(
       void* context_ptr, uint32_t physical_address_start, uint32_t length,
       bool exact_range);
-  std::pair<uint32_t, uint32_t> MemoryWriteCallback(
-      uint32_t physical_address_start, uint32_t length, bool exact_range);
 
   struct GlobalWatch {
     GlobalWatchCallback callback;
@@ -269,6 +279,13 @@ class SharedMemory {
   std::unique_ptr<ui::d3d12::UploadBufferPool> upload_buffer_pool_ = nullptr;
 
   void TransitionBuffer(D3D12_RESOURCE_STATES new_state);
+
+  // GPU-written memory downloading for traces.
+  // Start page, length in pages.
+  std::vector<std::pair<uint32_t, uint32_t>> trace_gpu_written_ranges_;
+  // Created temporarily, only for downloading.
+  ID3D12Resource* trace_gpu_written_buffer_ = nullptr;
+  void ResetTraceGPUWrittenBuffer();
 };
 
 }  // namespace d3d12

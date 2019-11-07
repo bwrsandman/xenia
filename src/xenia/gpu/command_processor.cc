@@ -20,7 +20,6 @@
 #include "xenia/base/ring_buffer.h"
 #include "xenia/gpu/gpu_flags.h"
 #include "xenia/gpu/graphics_system.h"
-#include "xenia/gpu/registers.h"
 #include "xenia/gpu/sampler_info.h"
 #include "xenia/gpu/texture_info.h"
 #include "xenia/gpu/xenos.h"
@@ -120,6 +119,8 @@ void CommandProcessor::EndTracing() {
     return;
   }
   assert_true(trace_state_ == TraceState::kStreaming);
+  FinalizeTrace();
+  trace_state_ = TraceState::kDisabled;
   trace_writer_.Close();
 }
 
@@ -351,20 +352,20 @@ void CommandProcessor::MakeCoherent() {
   // https://cgit.freedesktop.org/xorg/driver/xf86-video-radeonhd/tree/src/r6xx_accel.c?id=3f8b6eccd9dba116cc4801e7f80ce21a879c67d2#n454
 
   RegisterFile* regs = register_file_;
-  auto status_host = regs->values[XE_GPU_REG_COHER_STATUS_HOST].u32;
+  auto& status_host = regs->Get<reg::COHER_STATUS_HOST>();
   auto base_host = regs->values[XE_GPU_REG_COHER_BASE_HOST].u32;
   auto size_host = regs->values[XE_GPU_REG_COHER_SIZE_HOST].u32;
 
-  if (!(status_host & 0x80000000ul)) {
+  if (!status_host.status) {
     return;
   }
 
   const char* action = "N/A";
-  if ((status_host & 0x03000000) == 0x03000000) {
+  if (status_host.vc_action_ena && status_host.tc_action_ena) {
     action = "VC | TC";
-  } else if (status_host & 0x02000000) {
+  } else if (status_host.tc_action_ena) {
     action = "TC";
-  } else if (status_host & 0x01000000) {
+  } else if (status_host.vc_action_ena) {
     action = "VC";
   }
 
@@ -373,8 +374,7 @@ void CommandProcessor::MakeCoherent() {
          base_host + size_host, size_host, action);
 
   // Mark coherent.
-  status_host &= ~0x80000000ul;
-  regs->values[XE_GPU_REG_COHER_STATUS_HOST].u32 = status_host;
+  status_host.status = 0;
 }
 
 void CommandProcessor::PrepareForWait() { trace_writer_.Flush(); }
@@ -439,6 +439,7 @@ uint32_t CommandProcessor::ExecutePrimaryBuffer(uint32_t read_index,
     auto file_name = xe::format_string(L"%8X_stream.xtr", title_id);
     auto path = trace_stream_path_ + file_name;
     trace_writer_.Open(path, title_id);
+    InitializeTrace();
   }
 
   // Adjust pointer base.
@@ -740,6 +741,7 @@ bool CommandProcessor::ExecutePacketType3(RingBuffer* reader, uint32_t packet) {
       trace_writer_.WriteEvent(EventCommand::Type::kSwap);
       trace_writer_.Flush();
       if (trace_state_ == TraceState::kSingleFrame) {
+        FinalizeTrace();
         trace_state_ = TraceState::kDisabled;
         trace_writer_.Close();
       }
@@ -749,6 +751,7 @@ bool CommandProcessor::ExecutePacketType3(RingBuffer* reader, uint32_t packet) {
       auto file_name = xe::format_string(L"%8X_%u.xtr", title_id, counter_ - 1);
       auto path = trace_frame_path_ + file_name;
       trace_writer_.Open(path, title_id);
+      InitializeTrace();
     }
   }
 

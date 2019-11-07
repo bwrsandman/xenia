@@ -152,26 +152,26 @@ class PipelineCache {
     uint32_t depth_clip : 1;                                    // 15
     uint32_t rov_msaa : 1;                                      // 16
     DepthRenderTargetFormat depth_format : 1;                   // 17
-    uint32_t depth_func : 3;                                    // 20
+    CompareFunction depth_func : 3;                             // 20
     uint32_t depth_write : 1;                                   // 21
     uint32_t stencil_enable : 1;                                // 22
     uint32_t stencil_read_mask : 8;                             // 30
     uint32_t force_early_z : 1;                                 // 31
 
-    uint32_t stencil_write_mask : 8;           // 8
-    uint32_t stencil_front_fail_op : 3;        // 11
-    uint32_t stencil_front_depth_fail_op : 3;  // 14
-    uint32_t stencil_front_pass_op : 3;        // 17
-    uint32_t stencil_front_func : 3;           // 20
-    uint32_t stencil_back_fail_op : 3;         // 23
-    uint32_t stencil_back_depth_fail_op : 3;   // 26
-    uint32_t stencil_back_pass_op : 3;         // 29
-    uint32_t stencil_back_func : 3;            // 32
+    uint32_t stencil_write_mask : 8;            // 8
+    StencilOp stencil_front_fail_op : 3;        // 11
+    StencilOp stencil_front_depth_fail_op : 3;  // 14
+    StencilOp stencil_front_pass_op : 3;        // 17
+    CompareFunction stencil_front_func : 3;     // 20
+    StencilOp stencil_back_fail_op : 3;         // 23
+    StencilOp stencil_back_depth_fail_op : 3;   // 26
+    StencilOp stencil_back_pass_op : 3;         // 29
+    CompareFunction stencil_back_func : 3;      // 32
 
     PipelineRenderTarget render_targets[4];
   };
 
-  bool TranslateShader(D3D12Shader* shader, xenos::xe_gpu_program_cntl_t cntl,
+  bool TranslateShader(D3D12Shader* shader, reg::SQ_PROGRAM_CNTL cntl,
                        bool tessellated, PrimitiveType primitive_type);
 
   bool GetCurrentStateDescription(

@@ -364,7 +364,7 @@ VkPipeline PipelineCache::GetPipeline(const RenderState* render_state,
 }
 
 bool PipelineCache::TranslateShader(VulkanShader* shader,
-                                    xenos::xe_gpu_program_cntl_t cntl) {
+                                    reg::SQ_PROGRAM_CNTL cntl) {
   // Perform translation.
   // If this fails the shader will be marked as invalid and ignored later.
   if (!shader_translator_->Translate(shader, PrimitiveType::kNone, cntl)) {
@@ -808,44 +808,33 @@ bool PipelineCache::SetDynamicState(VkCommandBuffer command_buffer,
   }
 
   bool push_constants_dirty = full_update || viewport_state_dirty;
-  push_constants_dirty |=
-      SetShadowRegister(&regs.sq_program_cntl, XE_GPU_REG_SQ_PROGRAM_CNTL);
+  push_constants_dirty |= SetShadowRegister(&regs.sq_program_cntl.value,
+                                            XE_GPU_REG_SQ_PROGRAM_CNTL);
   push_constants_dirty |=
       SetShadowRegister(&regs.sq_context_misc, XE_GPU_REG_SQ_CONTEXT_MISC);
   push_constants_dirty |=
       SetShadowRegister(&regs.rb_colorcontrol, XE_GPU_REG_RB_COLORCONTROL);
   push_constants_dirty |=
-      SetShadowRegister(&regs.rb_color_info, XE_GPU_REG_RB_COLOR_INFO);
+      SetShadowRegister(&regs.rb_color_info.value, XE_GPU_REG_RB_COLOR_INFO);
   push_constants_dirty |=
-      SetShadowRegister(&regs.rb_color1_info, XE_GPU_REG_RB_COLOR1_INFO);
+      SetShadowRegister(&regs.rb_color1_info.value, XE_GPU_REG_RB_COLOR1_INFO);
   push_constants_dirty |=
-      SetShadowRegister(&regs.rb_color2_info, XE_GPU_REG_RB_COLOR2_INFO);
+      SetShadowRegister(&regs.rb_color2_info.value, XE_GPU_REG_RB_COLOR2_INFO);
   push_constants_dirty |=
-      SetShadowRegister(&regs.rb_color3_info, XE_GPU_REG_RB_COLOR3_INFO);
+      SetShadowRegister(&regs.rb_color3_info.value, XE_GPU_REG_RB_COLOR3_INFO);
   push_constants_dirty |=
       SetShadowRegister(&regs.rb_alpha_ref, XE_GPU_REG_RB_ALPHA_REF);
   push_constants_dirty |=
       SetShadowRegister(&regs.pa_su_point_size, XE_GPU_REG_PA_SU_POINT_SIZE);
   if (push_constants_dirty) {
-    xenos::xe_gpu_program_cntl_t program_cntl;
-    program_cntl.dword_0 = regs.sq_program_cntl;
-
     // Normal vertex shaders only, for now.
-    // TODO(benvanik): transform feedback/memexport.
-    // https://github.com/freedreno/freedreno/blob/master/includes/a2xx.xml.h
-    // Draw calls skipped if they have unsupported export modes.
-    // 0 = positionOnly
-    // 1 = unused
-    // 2 = sprite
-    // 3 = edge
-    // 4 = kill
-    // 5 = spriteKill
-    // 6 = edgeKill
-    // 7 = multipass
-    assert_true(program_cntl.vs_export_mode == 0 ||
-                program_cntl.vs_export_mode == 2 ||
-                program_cntl.vs_export_mode == 7);
-    assert_false(program_cntl.gen_index_vtx);
+    assert_true(regs.sq_program_cntl.vs_export_mode ==
+                    xenos::VertexShaderExportMode::kPosition1Vector ||
+                regs.sq_program_cntl.vs_export_mode ==
+                    xenos::VertexShaderExportMode::kPosition2VectorsSprite ||
+                regs.sq_program_cntl.vs_export_mode ==
+                    xenos::VertexShaderExportMode::kMultipass);
+    assert_false(regs.sq_program_cntl.gen_index_vtx);
 
     SpirvPushConstants push_constants = {};
 
@@ -909,7 +898,8 @@ bool PipelineCache::SetDynamicState(VkCommandBuffer command_buffer,
 
     // Whether to populate a register in the pixel shader with frag coord.
     int ps_param_gen = (regs.sq_context_misc >> 8) & 0xFF;
-    push_constants.ps_param_gen = program_cntl.param_gen ? ps_param_gen : -1;
+    push_constants.ps_param_gen =
+        regs.sq_program_cntl.param_gen ? ps_param_gen : -1;
 
     vkCmdPushConstants(command_buffer, pipeline_layout_,
                        VK_SHADER_STAGE_VERTEX_BIT |
@@ -1061,7 +1051,8 @@ PipelineCache::UpdateStatus PipelineCache::UpdateShaderStages(
   bool dirty = false;
   dirty |= SetShadowRegister(&regs.pa_su_sc_mode_cntl,
                              XE_GPU_REG_PA_SU_SC_MODE_CNTL);
-  dirty |= SetShadowRegister(&regs.sq_program_cntl, XE_GPU_REG_SQ_PROGRAM_CNTL);
+  dirty |= SetShadowRegister(&regs.sq_program_cntl.value,
+                             XE_GPU_REG_SQ_PROGRAM_CNTL);
   dirty |= regs.vertex_shader != vertex_shader;
   dirty |= regs.pixel_shader != pixel_shader;
   dirty |= regs.primitive_type != primitive_type;
@@ -1073,17 +1064,14 @@ PipelineCache::UpdateStatus PipelineCache::UpdateShaderStages(
     return UpdateStatus::kCompatible;
   }
 
-  xenos::xe_gpu_program_cntl_t sq_program_cntl;
-  sq_program_cntl.dword_0 = regs.sq_program_cntl;
-
   if (!vertex_shader->is_translated() &&
-      !TranslateShader(vertex_shader, sq_program_cntl)) {
+      !TranslateShader(vertex_shader, regs.sq_program_cntl)) {
     XELOGE("Failed to translate the vertex shader!");
     return UpdateStatus::kError;
   }
 
   if (pixel_shader && !pixel_shader->is_translated() &&
-      !TranslateShader(pixel_shader, sq_program_cntl)) {
+      !TranslateShader(pixel_shader, regs.sq_program_cntl)) {
     XELOGE("Failed to translate the pixel shader!");
     return UpdateStatus::kError;
   }
@@ -1513,16 +1501,15 @@ PipelineCache::UpdateStatus PipelineCache::UpdateColorBlendState() {
   auto& state_info = update_color_blend_state_info_;
 
   bool dirty = false;
-  dirty |= SetShadowRegister(&regs.rb_colorcontrol, XE_GPU_REG_RB_COLORCONTROL);
   dirty |= SetShadowRegister(&regs.rb_color_mask, XE_GPU_REG_RB_COLOR_MASK);
   dirty |=
-      SetShadowRegister(&regs.rb_blendcontrol[0], XE_GPU_REG_RB_BLENDCONTROL_0);
+      SetShadowRegister(&regs.rb_blendcontrol[0], XE_GPU_REG_RB_BLENDCONTROL0);
   dirty |=
-      SetShadowRegister(&regs.rb_blendcontrol[1], XE_GPU_REG_RB_BLENDCONTROL_1);
+      SetShadowRegister(&regs.rb_blendcontrol[1], XE_GPU_REG_RB_BLENDCONTROL1);
   dirty |=
-      SetShadowRegister(&regs.rb_blendcontrol[2], XE_GPU_REG_RB_BLENDCONTROL_2);
+      SetShadowRegister(&regs.rb_blendcontrol[2], XE_GPU_REG_RB_BLENDCONTROL2);
   dirty |=
-      SetShadowRegister(&regs.rb_blendcontrol[3], XE_GPU_REG_RB_BLENDCONTROL_3);
+      SetShadowRegister(&regs.rb_blendcontrol[3], XE_GPU_REG_RB_BLENDCONTROL3);
   dirty |= SetShadowRegister(&regs.rb_modecontrol, XE_GPU_REG_RB_MODECONTROL);
   XXH64_update(&hash_state_, &regs, sizeof(regs));
   if (!dirty) {
@@ -1568,7 +1555,7 @@ PipelineCache::UpdateStatus PipelineCache::UpdateColorBlendState() {
   for (int i = 0; i < 4; ++i) {
     uint32_t blend_control = regs.rb_blendcontrol[i];
     auto& attachment_state = attachment_states[i];
-    attachment_state.blendEnable = !(regs.rb_colorcontrol & 0x20);
+    attachment_state.blendEnable = (blend_control & 0x1FFF1FFF) != 0x00010001;
     // A2XX_RB_BLEND_CONTROL_COLOR_SRCBLEND
     attachment_state.srcColorBlendFactor =
         kBlendFactorMap[(blend_control & 0x0000001F) >> 0];

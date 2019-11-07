@@ -134,6 +134,8 @@ class CommandProcessor {
   virtual void BeginTracing(const std::wstring& root_path);
   virtual void EndTracing();
 
+  virtual void TracePlaybackWroteMemory(uint32_t base_ptr, uint32_t length) = 0;
+
   void InitializeRingBuffer(uint32_t ptr, uint32_t page_count);
   void EnableReadPointerWriteBack(uint32_t ptr, uint32_t block_size);
 
@@ -151,7 +153,7 @@ class CommandProcessor {
  protected:
   struct IndexBufferInfo {
     IndexFormat format = IndexFormat::kInt16;
-    Endian endianness = Endian::kUnspecified;
+    Endian endianness = Endian::kNone;
     uint32_t count = 0;
     uint32_t guest_base = 0;
     size_t length = 0;
@@ -236,6 +238,9 @@ class CommandProcessor {
   virtual bool IssueDraw(PrimitiveType prim_type, uint32_t index_count,
                          IndexBufferInfo* index_buffer_info) = 0;
   virtual bool IssueCopy() = 0;
+
+  virtual void InitializeTrace() = 0;
+  virtual void FinalizeTrace() = 0;
 
   Memory* memory_ = nullptr;
   kernel::KernelState* kernel_state_ = nullptr;

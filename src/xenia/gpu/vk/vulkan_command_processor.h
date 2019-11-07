@@ -24,6 +24,8 @@ class VulkanCommandProcessor : public CommandProcessor {
                                   kernel::KernelState* kernel_state);
   ~VulkanCommandProcessor();
 
+  void TracePlaybackWroteMemory(uint32_t base_ptr, uint32_t length) override;
+
  protected:
   bool SetupContext() override;
   void ShutdownContext() override;
@@ -38,6 +40,9 @@ class VulkanCommandProcessor : public CommandProcessor {
   bool IssueDraw(PrimitiveType primitive_type, uint32_t index_count,
                  IndexBufferInfo* index_buffer_info) override;
   bool IssueCopy() override;
+
+  void InitializeTrace() override;
+  void FinalizeTrace() override;
 };
 
 }  // namespace vk
