@@ -12,7 +12,6 @@ project("xenia-app")
     "capstone",
     "dxbc",
     "discord-rpc",
-    "glew",
     "glslang-spirv",
     "imgui",
     "libavcodec",
@@ -71,8 +70,6 @@ project("xenia-app")
       "X11",
       "xcb",
       "X11-xcb",
-      "GL",
-      "vulkan",
     })
 
   filter("platforms:Windows")
