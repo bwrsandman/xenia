@@ -510,19 +510,20 @@ class PosixCondition<Thread> : public PosixConditionBase {
 
   /// Constructor for existing thread. This should only happen once called by
   /// Thread::GetCurrentThread() on the main thread
-  explicit PosixCondition(pthread_t thread)
+  PosixCondition(pthread_t thread, bool current)
       : thread_(thread),
         signaled_(false),
         exit_code_(0),
         state_(State::kRunning),
-        suspend_count_(0) {}
+        suspend_count_(0),
+        is_current_(current) {}
 
   virtual ~PosixCondition() {
     if (thread_ && !signaled_) {
       if (pthread_cancel(thread_) != 0) {
         assert_always();
       }
-      if (pthread_join(thread_, nullptr) != 0) {
+      if (!is_current_ && pthread_join(thread_, nullptr) != 0) {
         assert_always();
       }
     }
@@ -701,6 +702,7 @@ class PosixCondition<Thread> : public PosixConditionBase {
   mutable std::mutex callback_mutex_;
   mutable std::condition_variable state_signal_;
   std::function<void()> user_callback_;
+  bool is_current_;
 };
 
 class PosixWaitHandle {
@@ -715,7 +717,7 @@ class PosixConditionHandle : public T, public PosixWaitHandle {
  public:
   PosixConditionHandle() = default;
   explicit PosixConditionHandle(bool);
-  explicit PosixConditionHandle(pthread_t thread);
+  explicit PosixConditionHandle(pthread_t thread, bool current);
   PosixConditionHandle(bool manual_reset, bool initial_state);
   PosixConditionHandle(uint32_t initial_count, uint32_t maximum_count);
   ~PosixConditionHandle() override = default;
@@ -747,8 +749,8 @@ PosixConditionHandle<Event>::PosixConditionHandle(bool manual_reset,
     : handle_(manual_reset, initial_state) {}
 
 template <>
-PosixConditionHandle<Thread>::PosixConditionHandle(pthread_t thread)
-    : handle_(thread) {}
+PosixConditionHandle<Thread>::PosixConditionHandle(pthread_t thread, bool current)
+    : handle_(thread, current) {}
 
 WaitResult Wait(WaitHandle* wait_handle, bool is_alertable,
                 std::chrono::milliseconds timeout) {
@@ -888,7 +890,7 @@ std::unique_ptr<Timer> Timer::CreateSynchronizationTimer() {
 class PosixThread : public PosixConditionHandle<Thread> {
  public:
   PosixThread() = default;
-  explicit PosixThread(pthread_t thread) : PosixConditionHandle(thread) {}
+  PosixThread(pthread_t thread, bool current = false) : PosixConditionHandle(thread, current) {}
   ~PosixThread() override = default;
 
   bool Initialize(CreationParameters params,
@@ -1012,7 +1014,7 @@ Thread* Thread::GetCurrentThread() {
   // The only thread not created by Thread::Create should be the main thread.
   pthread_t handle = pthread_self();
 
-  current_thread_ = new PosixThread(handle);
+  current_thread_ = new PosixThread(handle, true);
   atexit([] { delete current_thread_; });
 
   return current_thread_;
