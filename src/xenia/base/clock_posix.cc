@@ -7,36 +7,44 @@
  ******************************************************************************
  */
 
-#include "xenia/base/clock.h"
-
 #include <sys/time.h>
-#include <time.h>
+
+#include "xenia/base/assert.h"
+#include "xenia/base/clock.h"
 
 namespace xe {
 
 uint64_t Clock::host_tick_frequency_platform() {
   timespec res;
-  clock_getres(CLOCK_MONOTONIC_RAW, &res);
+  auto error = clock_getres(CLOCK_MONOTONIC_RAW, &res);
+  assert(!error);
+  assert(!res.tv_sec);
 
-  return uint64_t(res.tv_sec) + uint64_t(res.tv_nsec) * 1000000000ull;
+  // Convert nano seconds to hertz. Resolution is usually 1ns on most systems.
+  return 1000000000ull / res.tv_nsec;
 }
 
 uint64_t Clock::host_tick_count_platform() {
-  timespec res;
-  clock_gettime(CLOCK_MONOTONIC_RAW, &res);
+  timespec tp;
+  auto error = clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
+  assert(!error);
 
-  return uint64_t(res.tv_sec) + uint64_t(res.tv_nsec) * 1000000000ull;
+  return tp.tv_nsec + tp.tv_sec * 1000000000ull;
 }
 
 uint64_t Clock::QueryHostSystemTime() {
-  struct timeval tv;
-  gettimeofday(&tv, NULL);
+  constexpr uint64_t seconds_per_day = 3600 * 24;
+  // Don't forget the 89 leap days.
+  constexpr uint64_t seconds_1601_to_1970 =
+      ((369 * 365 + 89) * seconds_per_day);
 
-  uint64_t ret = tv.tv_usec;
-  ret /= 1000;  // usec -> msec
+  timeval now;
+  auto error = gettimeofday(&now, nullptr);
+  assert(!error);
+  assert(sizeof(now.tv_sec) == 8);
 
-  ret += (tv.tv_sec * 1000);  // sec -> msec
-  return ret;
+  // NT systems use 100ns intervals.
+  return (now.tv_sec + seconds_1601_to_1970) * 10000000ull + now.tv_usec * 10;
 }
 
 uint64_t Clock::QueryHostUptimeMillis() {

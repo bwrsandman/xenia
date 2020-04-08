@@ -16,6 +16,11 @@ namespace xe {
 namespace base {
 namespace test {
 
+TEST_CASE("find_base_path") {
+  // TODO(bwrsandman):
+  REQUIRE(false);
+}
+
 TEST_CASE("StringBuffer") {
   StringBuffer sb;
   uint32_t module_flags = 0x1000000;
