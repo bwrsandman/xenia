@@ -32,21 +32,19 @@ class Fence {
   Fence() : signaled_(false) {}
   void Signal() {
     std::unique_lock<std::mutex> lock(mutex_);
-    signaled_.store(true);
+    signaled_ = true;
     cond_.notify_all();
   }
   void Wait() {
     std::unique_lock<std::mutex> lock(mutex_);
-    while (!signaled_.load()) {
-      cond_.wait(lock);
-    }
-    signaled_.store(false);
+    cond_.wait(lock, [this] { return signaled_; });
+    signaled_ = false;
   }
 
  private:
   std::mutex mutex_;
   std::condition_variable cond_;
-  std::atomic<bool> signaled_;
+  bool signaled_;
 };
 
 // Returns the total number of logical processors in the host system.
@@ -307,12 +305,12 @@ class Timer : public WaitHandle {
                             std::chrono::milliseconds period,
                             std::function<void()> opt_callback = nullptr) = 0;
   template <typename Rep, typename Period>
-  void SetRepeating(std::chrono::nanoseconds due_time,
+  bool SetRepeating(std::chrono::nanoseconds due_time,
                     std::chrono::duration<Rep, Period> period,
                     std::function<void()> opt_callback = nullptr) {
-    SetRepeating(due_time,
-                 std::chrono::duration_cast<std::chrono::milliseconds>(period),
-                 std::move(opt_callback));
+    return SetRepeating(
+        due_time, std::chrono::duration_cast<std::chrono::milliseconds>(period),
+        std::move(opt_callback));
   }
 
   // Stops the timer before it can be set to the signaled state and cancels
@@ -358,7 +356,7 @@ class Thread : public WaitHandle {
   virtual uint32_t system_id() const = 0;
 
   // Returns the current name of the thread, if previously specified.
-  std::string name() const { return name_; }
+  virtual std::string name() const { return name_; }
 
   // Sets the name of the thread, used in debugging and logging.
   virtual void set_name(std::string name) { name_ = std::move(name); }
@@ -390,7 +388,7 @@ class Thread : public WaitHandle {
 
   // Decrements a thread's suspend count. When the suspend count is decremented
   // to zero, the execution of the thread is resumed.
-  virtual bool Resume(uint32_t* out_new_suspend_count = nullptr) = 0;
+  virtual bool Resume(uint32_t* out_previous_suspend_count = nullptr) = 0;
 
   // Suspends the specified thread.
   virtual bool Suspend(uint32_t* out_previous_suspend_count = nullptr) = 0;
