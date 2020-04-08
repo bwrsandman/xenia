@@ -115,7 +115,7 @@ Memory::~Memory() {
   // Unmap all views and close mapping.
   if (mapping_) {
     UnmapViews();
-    xe::memory::CloseFileMappingHandle(mapping_);
+    xe::memory::CloseFileMappingHandle(mapping_, file_name_);
     mapping_base_ = nullptr;
     mapping_ = nullptr;
   }
@@ -126,7 +126,7 @@ Memory::~Memory() {
 
 bool Memory::Initialize() {
   file_name_ =
-      fmt::format("Local\\xenia_memory_{}", Clock::QueryHostTickCount());
+      fmt::format("xenia_memory_{}", Clock::QueryHostTickCount());
 
   // Create main page file-backed mapping. This is all reserved but
   // uncommitted (so it shouldn't expand page file).
