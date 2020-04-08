@@ -43,7 +43,6 @@ project("xenia-hid-demo")
       "X11",
       "xcb",
       "X11-xcb",
-      "vulkan",
       "SDL2",
     })
 
